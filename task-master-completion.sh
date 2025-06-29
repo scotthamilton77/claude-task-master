@@ -11,8 +11,7 @@ _task_master_completion() {
 
     local command="${words[1]}"
     local options_help
-    local base_cmd="${words[0]}"
-    options_help=$(${base_cmd} ${command} --help 2>/dev/null)
+    options_help=$(task-master ${command} --help 2>/dev/null)
 
     if [[ -n "${options_help}" ]]; then
         local options
