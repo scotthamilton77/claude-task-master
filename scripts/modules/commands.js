@@ -4579,8 +4579,8 @@ function setupCLI() {
 	const originalHelpInformation =
 		programInstance.helpInformation.bind(programInstance);
 	programInstance.helpInformation = function () {
-		// If this is being called for a subcommand, use the default Commander.js help
-		if (this.parent && this.parent !== programInstance) {
+		// If this is a subcommand (not the main program), use default Commander.js help
+		if (this !== programInstance) {
 			return originalHelpInformation();
 		}
 		// If this is the main program help, use our custom display

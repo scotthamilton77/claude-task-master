@@ -274,16 +274,33 @@ program
 	.name('task-master')
 	.description('Claude Task Master CLI')
 	.version(version)
-	.addHelpText('afterAll', () => {
-		// Use the same help display function as dev.js for consistency
-		displayHelp();
+	.addHelpText('afterAll', (context) => {
+		// Only show custom help for the main program, not subcommands
+		// Check if this is a subcommand by looking at the command name
+		try {
+			if (context && context.name && context.name() === 'task-master') {
+				displayHelp();
+			}
+		} catch (e) {
+			// If context doesn't have name method, skip custom help
+		}
 		return ''; // Return empty string to prevent commander's default help
 	});
 
 // Add custom help option to directly call our help display
 program.helpOption('-h, --help', 'Display help information');
-program.on('--help', () => {
-	displayHelp();
+program.on('--help', (context) => {
+	// Only show custom help for the main program, not subcommands
+	try {
+		if (!context || (context.name && context.name() === 'task-master')) {
+			displayHelp();
+		}
+	} catch (e) {
+		// If context doesn't have name method, assume it's main program
+		if (!context) {
+			displayHelp();
+		}
+	}
 });
 
 // // Add special case commands

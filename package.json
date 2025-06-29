@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.18.0",
+	"version": "0.18.1-dev",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -22,7 +22,10 @@
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write"
+		"format": "biome format . --write",
+		"test:claude:errors": "node scripts/test-claude-errors.js",
+		"generate-completion": "node scripts/generate-completion.js",
+		"publish-local": "npm pack && npm install -g ./task-master-ai-*.tgz"
 	},
 	"keywords": [
 		"claude",
