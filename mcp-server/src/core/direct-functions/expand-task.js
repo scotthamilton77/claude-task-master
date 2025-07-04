@@ -172,7 +172,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 		}
 
 		// Save tasks.json with potentially empty subtasks array
-		writeJSON(tasksPath, data);
+		writeJSON(tasksPath, data, projectRoot);
 
 		// Create logger wrapper using the utility
 		const mcpLog = createLogWrapper(log);
