@@ -32,6 +32,11 @@ export function ensureSubtaskParentIds(tasks, logMigrations = false) {
 		}
 
 		const validatedSubtasks = task.subtasks.map((subtask) => {
+			// Handle null/undefined subtasks
+			if (!subtask || typeof subtask !== 'object') {
+				return subtask;
+			}
+
 			// Check if parentTaskId is missing or invalid
 			if (!subtask.parentTaskId || subtask.parentTaskId !== task.id) {
 				migrationsPerformed++;

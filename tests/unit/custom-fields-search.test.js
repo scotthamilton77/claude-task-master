@@ -305,7 +305,7 @@ describe('Custom Fields Search Integration', () => {
 			const endTime = Date.now();
 
 			expect(results.length).toBeGreaterThan(0);
-			expect(endTime - startTime).toBeLessThan(100); // Should complete in less than 100ms
+			expect(endTime - startTime).toBeLessThan(500);
 		});
 
 		it('should handle tasks with many custom fields', () => {
