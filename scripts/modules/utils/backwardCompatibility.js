@@ -13,17 +13,26 @@
  */
 
 import { ensureCustomFieldsOnTasks } from './customFieldsValidator.js';
+import { ensureSubtaskParentIds } from './subtaskValidator.js';
 
 /**
- * Ensures backward compatibility for tasks by adding customFields where missing
- * This function processes task data to guarantee all tasks and subtasks have
- * a customFields property, even if it's an empty object.
+ * Ensures backward compatibility for tasks by applying all necessary validators
+ * This function processes task data to guarantee all tasks and subtasks have:
+ * - customFields property (even if empty)
+ * - proper parentTaskId on subtasks
+ * - consistent data structure
  *
  * @param {Object[]} tasks - Array of task objects
- * @returns {Object[]} Tasks with ensured customFields
+ * @returns {Object[]} Tasks with full backward compatibility ensured
  */
 export function ensureTasksBackwardCompatibility(tasks) {
-	return ensureCustomFieldsOnTasks(tasks);
+	// Apply custom fields validation first
+	const withCustomFields = ensureCustomFieldsOnTasks(tasks);
+	
+	// Then ensure subtask parentTaskId integrity
+	const withValidSubtasks = ensureSubtaskParentIds(withCustomFields, true);
+	
+	return withValidSubtasks;
 }
 
 /**
