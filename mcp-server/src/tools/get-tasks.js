@@ -23,7 +23,7 @@ export function registerListTasksTool(server) {
 	server.addTool({
 		name: 'get_tasks',
 		description:
-			'Get all tasks from Task Master, optionally filtering by status and including subtasks.',
+			'Get all tasks from Task Master, optionally filtering by status, custom fields, and including subtasks. Custom fields can be used as first-class query parameters (e.g., epic, component, assignee, taskType, etc.).',
 		parameters: z.object({
 			status: z
 				.string()
@@ -51,8 +51,33 @@ export function registerListTasksTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
-		}),
+				.describe('The directory of the project. Must be an absolute path.'),
+			// Custom field parameters (examples - any custom field name can be used)
+			epic: z
+				.string()
+				.optional()
+				.describe('Filter by epic custom field (e.g., "EPIC-1234")'),
+			component: z
+				.string()
+				.optional()
+				.describe('Filter by component custom field (e.g., "auth", "database")'),
+			assignee: z
+				.string()
+				.optional()
+				.describe('Filter by assignee custom field (e.g., "john.doe")'),
+			taskType: z
+				.string()
+				.optional()
+				.describe('Filter by task type custom field (e.g., "feature", "bug")'),
+			sprint: z
+				.string()
+				.optional()
+				.describe('Filter by sprint custom field (e.g., "2024-Q1-S3")'),
+			riskLevel: z
+				.string()
+				.optional()
+				.describe('Filter by risk level custom field (e.g., "high", "medium", "low")')
+		}).passthrough(), // Allow additional custom field parameters not explicitly defined
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
@@ -78,13 +103,27 @@ export function registerListTasksTool(server) {
 					complexityReportPath = null;
 				}
 
+				// Extract custom field filters from args
+				// Core parameters that are not custom fields
+				const coreParams = ['status', 'withSubtasks', 'file', 'complexityReport', 'projectRoot'];
+				const customFieldFilters = {};
+				
+				Object.entries(args).forEach(([key, value]) => {
+					if (!coreParams.includes(key) && value !== undefined) {
+						customFieldFilters[key] = value;
+					}
+				});
+
+				log.info(`Custom field filters: ${JSON.stringify(customFieldFilters)}`);
+
 				const result = await listTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						status: args.status,
 						withSubtasks: args.withSubtasks,
 						reportPath: complexityReportPath,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						customFieldFilters: customFieldFilters
 					},
 					log,
 					{ session }

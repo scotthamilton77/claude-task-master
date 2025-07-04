@@ -1,8 +1,19 @@
 import path from 'path';
+import { z } from 'zod';
 
 import { log, readJSON, writeJSON } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
 import generateTaskFiles from './generate-task-files.js';
+
+// Define Zod schema for custom fields
+const CustomFieldsSchema = z.record(z.string()).optional().default({});
+
+// Reserved field names that cannot be used as custom fields
+const RESERVED_FIELD_NAMES = [
+	'id', 'title', 'description', 'details', 'testStrategy',
+	'status', 'priority', 'dependencies', 'subtasks', 'customFields',
+	'parentTaskId'
+];
 
 /**
  * Add a subtask to a parent task
@@ -12,6 +23,7 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {Object} newSubtaskData - Data for creating a new subtask (used if existingTaskId is null)
  * @param {boolean} generateFiles - Whether to regenerate task files after adding the subtask
  * @param {Object} context - Context object containing projectRoot and tag information
+ * @param {Object} customFields - Custom fields for the subtask (optional)
  * @returns {Object} The newly created or converted subtask
  */
 async function addSubtask(
@@ -20,10 +32,37 @@ async function addSubtask(
 	existingTaskId = null,
 	newSubtaskData = null,
 	generateFiles = true,
-	context = {}
+	context = {},
+	customFields = {}
 ) {
 	try {
 		log('info', `Adding subtask to parent task ${parentId}...`);
+
+		// Validate custom fields
+		const validatedCustomFields = CustomFieldsSchema.parse(customFields);
+		
+		// Check for reserved field names
+		const invalidFieldNames = Object.keys(validatedCustomFields).filter(name => 
+			RESERVED_FIELD_NAMES.includes(name)
+		);
+		
+		if (invalidFieldNames.length > 0) {
+			throw new Error(`Invalid custom field names (reserved): ${invalidFieldNames.join(', ')}`);
+		}
+		
+		// Validate field name format
+		const fieldNameRegex = /^[a-zA-Z_-][a-zA-Z0-9_-]*$/;
+		const invalidFormatNames = Object.keys(validatedCustomFields).filter(name => 
+			!fieldNameRegex.test(name)
+		);
+		
+		if (invalidFormatNames.length > 0) {
+			throw new Error(`Invalid custom field name format: ${invalidFormatNames.join(', ')}. Field names must start with a letter, underscore, or hyphen, and contain only letters, numbers, underscores, and hyphens.`);
+		}
+
+		if (Object.keys(validatedCustomFields).length > 0) {
+			log('info', `Custom fields: ${JSON.stringify(validatedCustomFields)}`);
+		}
 
 		// Read the existing tasks with proper context
 		const data = readJSON(tasksPath, context.projectRoot, context.tag);
@@ -92,7 +131,11 @@ async function addSubtask(
 			newSubtask = {
 				...existingTask,
 				id: newSubtaskId,
-				parentTaskId: parentIdNum
+				parentTaskId: parentIdNum,
+				customFields: {
+					...(existingTask.customFields || {}),
+					...validatedCustomFields
+				}
 			};
 
 			// Add to parent's subtasks
@@ -123,7 +166,8 @@ async function addSubtask(
 				details: newSubtaskData.details || '',
 				status: newSubtaskData.status || 'pending',
 				dependencies: newSubtaskData.dependencies || [],
-				parentTaskId: parentIdNum
+				parentTaskId: parentIdNum,
+				customFields: validatedCustomFields
 			};
 
 			// Add to parent's subtasks

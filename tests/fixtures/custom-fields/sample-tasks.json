@@ -1,0 +1,119 @@
+{
+	"currentTag": "master",
+	"tasks": [
+		{
+			"id": 1,
+			"title": "Implement user authentication",
+			"description": "Add login and logout functionality",
+			"details": "Use JWT tokens for session management",
+			"testStrategy": "Unit tests for auth functions, integration tests for login flow",
+			"status": "pending",
+			"priority": "high",
+			"dependencies": [],
+			"subtasks": [
+				{
+					"id": "1.1",
+					"title": "Create JWT service",
+					"status": "pending",
+					"details": "Implement JWT token generation and validation",
+					"customFields": {
+						"assignee": "alice.jones",
+						"component": "auth-service",
+						"estimatedHours": "8"
+					}
+				},
+				{
+					"id": "1.2",
+					"title": "Implement login endpoint",
+					"status": "in-progress",
+					"details": "POST /api/auth/login endpoint",
+					"customFields": {
+						"assignee": "bob.smith",
+						"component": "auth-api",
+						"estimatedHours": "4"
+					}
+				}
+			],
+			"customFields": {
+				"epic": "EPIC-1234",
+				"component": "auth",
+				"taskType": "feature",
+				"assignee": "john.doe",
+				"sprint": "2024-Q1-S3",
+				"estimatedHours": "32",
+				"riskLevel": "medium"
+			}
+		},
+		{
+			"id": 2,
+			"title": "Fix database connection pooling",
+			"description": "Resolve connection timeout issues",
+			"details": "Connection pool exhaustion under high load",
+			"testStrategy": "Load testing with concurrent connections",
+			"status": "in-progress",
+			"priority": "critical",
+			"dependencies": [],
+			"subtasks": [],
+			"customFields": {
+				"epic": "EPIC-5678",
+				"component": "database",
+				"taskType": "bug",
+				"assignee": "jane.smith",
+				"riskLevel": "high",
+				"severity": "critical",
+				"affectedVersion": "1.2.3"
+			}
+		},
+		{
+			"id": 3,
+			"title": "Add user profile API endpoints",
+			"description": "RESTful API for user profile management",
+			"details": "CRUD operations for user profiles",
+			"testStrategy": "API testing with Postman collections",
+			"status": "pending",
+			"priority": "medium",
+			"dependencies": [1],
+			"subtasks": [],
+			"customFields": {
+				"epic": "EPIC-1234",
+				"component": "api",
+				"taskType": "feature",
+				"assignee": "john.doe",
+				"sprint": "2024-Q1-S4",
+				"estimatedHours": "16"
+			}
+		},
+		{
+			"id": 4,
+			"title": "Legacy task without custom fields",
+			"description": "This is an old task created before custom fields",
+			"details": "Should be backward compatible",
+			"testStrategy": "Manual testing",
+			"status": "pending",
+			"priority": "low",
+			"dependencies": [],
+			"subtasks": []
+		},
+		{
+			"id": 5,
+			"title": "Optimize search performance",
+			"description": "Improve search query response time",
+			"details": "Add database indexes and optimize queries",
+			"testStrategy": "Performance benchmarking",
+			"status": "done",
+			"priority": "medium",
+			"dependencies": [],
+			"subtasks": [],
+			"customFields": {
+				"epic": "EPIC-9999",
+				"component": "search",
+				"taskType": "enhancement",
+				"assignee": "carol.white",
+				"sprint": "2024-Q1-S2",
+				"estimatedHours": "24",
+				"actualHours": "20",
+				"completedDate": "2024-01-15"
+			}
+		}
+	]
+}

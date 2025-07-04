@@ -29,6 +29,9 @@ import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 
+// Define Zod schema for custom fields
+const CustomFieldsSchema = z.record(z.string()).optional().default({});
+
 // Define Zod schema for the expected AI output object
 const AiTaskDataSchema = z.object({
 	title: z.string().describe('Clear, concise title for the task'),
@@ -48,6 +51,12 @@ const AiTaskDataSchema = z.object({
 			'Array of task IDs that this task depends on (must be completed before this task can start)'
 		)
 });
+
+// Reserved field names that cannot be used as custom fields
+const RESERVED_FIELD_NAMES = [
+	'id', 'title', 'description', 'details', 'testStrategy',
+	'status', 'priority', 'dependencies', 'subtasks', 'customFields'
+];
 
 /**
  * Get all tasks from all tags
@@ -86,6 +95,7 @@ function getAllTasks(rawData) {
  * @param {string} [context.commandName] - The name of the command being executed (for telemetry)
  * @param {string} [context.outputType] - The output type ('cli' or 'mcp', for telemetry)
  * @param {string} [tag] - Tag for the task (optional)
+ * @param {Object} [customFields] - Custom fields for the task (optional)
  * @returns {Promise<object>} An object containing newTaskId and telemetryData
  */
 async function addTask(
@@ -97,7 +107,8 @@ async function addTask(
 	outputFormat = 'text', // Default to text for CLI
 	manualTaskData = null,
 	useResearch = false,
-	tag = null
+	tag = null,
+	customFields = {}
 ) {
 	const { session, mcpLog, projectRoot, commandName, outputType } = context;
 	const isMCP = !!mcpLog;
@@ -116,11 +127,36 @@ async function addTask(
 
 	const effectivePriority = priority || getDefaultPriority(projectRoot);
 
+	// Validate custom fields
+	const validatedCustomFields = CustomFieldsSchema.parse(customFields);
+	
+	// Check for reserved field names
+	const invalidFieldNames = Object.keys(validatedCustomFields).filter(name => 
+		RESERVED_FIELD_NAMES.includes(name)
+	);
+	
+	if (invalidFieldNames.length > 0) {
+		throw new Error(`Invalid custom field names (reserved): ${invalidFieldNames.join(', ')}`);
+	}
+	
+	// Validate field name format
+	const fieldNameRegex = /^[a-zA-Z_-][a-zA-Z0-9_-]*$/;
+	const invalidFormatNames = Object.keys(validatedCustomFields).filter(name => 
+		!fieldNameRegex.test(name)
+	);
+	
+	if (invalidFormatNames.length > 0) {
+		throw new Error(`Invalid custom field name format: ${invalidFormatNames.join(', ')}. Field names must start with a letter, underscore, or hyphen, and contain only letters, numbers, underscores, and hyphens.`);
+	}
+
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
 	);
 	if (tag) {
 		logFn.info(`Using tag context: ${tag}`);
+	}
+	if (Object.keys(validatedCustomFields).length > 0) {
+		logFn.info(`Custom fields: ${JSON.stringify(validatedCustomFields)}`);
 	}
 
 	let loadingIndicator = null;
@@ -517,7 +553,8 @@ async function addTask(
 				? taskData.dependencies
 				: numericDependencies, // Use AI-suggested dependencies if available, fallback to manually specified
 			priority: effectivePriority,
-			subtasks: [] // Initialize with empty subtasks array
+			subtasks: [], // Initialize with empty subtasks array
+			customFields: validatedCustomFields // Add custom fields to the task
 		};
 
 		// Additional check: validate all dependencies in the AI response

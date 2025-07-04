@@ -10,6 +10,12 @@ import {
 	addComplexityToTask
 } from '../utils.js';
 import findNextTask from './find-next-task.js';
+import {
+	translateQueryParameters,
+	filterTasks,
+	extractCustomFieldNames,
+	validateQueryParameters
+} from '../utils/queryTranslator.js';
 
 import {
 	displayBanner,
@@ -28,6 +34,7 @@ import {
  * @param {string} outputFormat - Output format (text or json)
  * @param {string} tag - Optional tag to override current tag resolution
  * @param {Object} context - Optional context object containing projectRoot and other options
+ * @param {Object} customFieldFilters - Optional custom field filters (e.g., { epic: 'EPIC-1234', component: 'auth' })
  * @returns {Object} - Task list result for json format
  */
 function listTasks(
@@ -37,7 +44,8 @@ function listTasks(
 	withSubtasks = false,
 	outputFormat = 'text',
 	tag = null,
-	context = {}
+	context = {},
+	customFieldFilters = {}
 ) {
 	try {
 		// Extract projectRoot from context if provided
@@ -54,21 +62,46 @@ function listTasks(
 			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport));
 		}
 
-		// Filter tasks by status if specified - now supports comma-separated statuses
-		let filteredTasks;
+		// Create query parameters object combining status and custom field filters
+		const queryParams = {
+			...customFieldFilters
+		};
+		
+		// Add status filter if specified
 		if (statusFilter && statusFilter.toLowerCase() !== 'all') {
-			// Handle comma-separated statuses
-			const allowedStatuses = statusFilter
-				.split(',')
-				.map((s) => s.trim().toLowerCase())
-				.filter((s) => s.length > 0); // Remove empty strings
-
-			filteredTasks = data.tasks.filter(
-				(task) =>
-					task.status && allowedStatuses.includes(task.status.toLowerCase())
-			);
+			queryParams.status = statusFilter;
+		}
+		
+		// Validate query parameters
+		const availableCustomFields = extractCustomFieldNames(data.tasks);
+		const validation = validateQueryParameters(queryParams, availableCustomFields);
+		
+		// Report validation warnings if in text mode
+		if (outputFormat === 'text') {
+			if (validation.warnings.length > 0) {
+				validation.warnings.forEach(warning => {
+					log('warn', warning);
+				});
+			}
+			if (validation.suggestions.length > 0) {
+				validation.suggestions.forEach(suggestion => {
+					log('info', suggestion);
+				});
+			}
+		}
+		
+		// If there are validation errors, throw an exception
+		if (!validation.valid) {
+			throw new Error(`Query validation failed: ${validation.errors.join(', ')}`);
+		}
+		
+		// Apply filtering using the query translator
+		let filteredTasks;
+		if (Object.keys(queryParams).length > 0) {
+			const filters = translateQueryParameters(queryParams);
+			filteredTasks = filterTasks(data.tasks, filters);
 		} else {
-			// Default to all tasks if no filter or filter is 'all'
+			// No filters applied
 			filteredTasks = data.tasks;
 		}
 

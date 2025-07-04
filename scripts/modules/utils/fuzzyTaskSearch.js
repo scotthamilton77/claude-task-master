@@ -6,38 +6,96 @@
 import Fuse from 'fuse.js';
 
 /**
+ * Weight configurations for different field types
+ */
+const FIELD_WEIGHTS = {
+	// Core fields
+	title: 2.0,
+	description: 1.5,
+	details: 1.0,
+	dependencyTitles: 0.5,
+	
+	// Common custom fields (higher weights)
+	epic: 1.8,
+	component: 1.5,
+	taskType: 1.6,
+	assignee: 1.2,
+	sprint: 1.4,
+	
+	// Default weight for unknown custom fields
+	default: 1.0
+};
+
+/**
+ * Get weight for a field
+ * @param {string} fieldName - Field name
+ * @returns {number} - Weight value
+ */
+function getWeightForField(fieldName) {
+	return FIELD_WEIGHTS[fieldName] || FIELD_WEIGHTS.default;
+}
+
+/**
+ * Extract all custom field names from tasks
+ * @param {Array} tasks - Array of task objects
+ * @returns {Array} - Array of unique custom field names
+ */
+function getCustomFieldNames(tasks) {
+	const fieldNames = new Set();
+	tasks.forEach(task => {
+		if (task.customFields) {
+			Object.keys(task.customFields).forEach(field => fieldNames.add(field));
+		}
+		if (task.subtasks) {
+			task.subtasks.forEach(subtask => {
+				if (subtask.customFields) {
+					Object.keys(subtask.customFields).forEach(field => fieldNames.add(field));
+				}
+			});
+		}
+	});
+	return Array.from(fieldNames);
+}
+
+/**
+ * Generate dynamic search keys based on discovered custom fields
+ * @param {Array} tasks - Array of task objects
+ * @param {string} searchType - Search type for base configuration
+ * @returns {Array} - Array of search key objects
+ */
+function generateSearchKeys(tasks, searchType = 'default') {
+	const coreFields = ['title', 'description', 'details', 'dependencyTitles'];
+	const customFields = getCustomFieldNames(tasks);
+	
+	const keys = [
+		...coreFields.map(field => ({ 
+			name: field, 
+			weight: getWeightForField(field) 
+		})),
+		...customFields.map(field => ({ 
+			name: `customFields.${field}`, 
+			weight: getWeightForField(field) 
+		}))
+	];
+	
+	return keys;
+}
+
+/**
  * Configuration for different search contexts
  */
 const SEARCH_CONFIGS = {
 	research: {
 		threshold: 0.5, // More lenient for research (broader context)
-		limit: 20,
-		keys: [
-			{ name: 'title', weight: 2.0 },
-			{ name: 'description', weight: 1.0 },
-			{ name: 'details', weight: 0.5 },
-			{ name: 'dependencyTitles', weight: 0.5 }
-		]
+		limit: 20
 	},
 	addTask: {
 		threshold: 0.4, // Stricter for add-task (more precise context)
-		limit: 15,
-		keys: [
-			{ name: 'title', weight: 2.0 },
-			{ name: 'description', weight: 1.5 },
-			{ name: 'details', weight: 0.8 },
-			{ name: 'dependencyTitles', weight: 0.5 }
-		]
+		limit: 15
 	},
 	default: {
 		threshold: 0.4,
-		limit: 15,
-		keys: [
-			{ name: 'title', weight: 2.0 },
-			{ name: 'description', weight: 1.5 },
-			{ name: 'details', weight: 1.0 },
-			{ name: 'dependencyTitles', weight: 0.5 }
-		]
+		limit: 15
 	}
 };
 
@@ -78,10 +136,14 @@ export class FuzzyTaskSearch {
 		this.tasks = tasks;
 		this.config = SEARCH_CONFIGS[searchType] || SEARCH_CONFIGS.default;
 		this.searchableTasks = this._prepareSearchableTasks(tasks);
+		
+		// Generate dynamic search keys based on available custom fields
+		const searchKeys = generateSearchKeys(tasks, searchType);
+		
 		this.fuse = new Fuse(this.searchableTasks, {
 			includeScore: true,
 			threshold: this.config.threshold,
-			keys: this.config.keys,
+			keys: searchKeys,
 			shouldSort: true,
 			useExtendedSearch: true,
 			limit: this.config.limit

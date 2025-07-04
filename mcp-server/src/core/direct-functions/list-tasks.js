@@ -18,7 +18,7 @@ import {
  */
 export async function listTasksDirect(args, log, context = {}) {
 	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot } = args;
+	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot, customFieldFilters } = args;
 	const { session } = context;
 
 	if (!tasksJsonPath) {
@@ -53,7 +53,8 @@ export async function listTasksDirect(args, log, context = {}) {
 				withSubtasksFilter,
 				'json',
 				null, // tag
-				{ projectRoot, session } // context
+				{ projectRoot, session }, // context
+				customFieldFilters || {} // custom field filters
 			);
 
 			if (!resultData || !resultData.tasks) {

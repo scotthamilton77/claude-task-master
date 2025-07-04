@@ -278,9 +278,19 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		}
 
 		// This is legacy format - migrate it to tagged format
+		// First ensure all tasks have customFields for backward compatibility
+		const tasksWithCustomFields = data.tasks.map(task => ({
+			...task,
+			customFields: task.customFields || {},
+			subtasks: task.subtasks ? task.subtasks.map(subtask => ({
+				...subtask,
+				customFields: subtask.customFields || {}
+			})) : []
+		}));
+		
 		const migratedData = {
 			master: {
-				tasks: data.tasks,
+				tasks: tasksWithCustomFields,
 				metadata: data.metadata || {
 					created: new Date().toISOString(),
 					updated: new Date().toISOString(),
@@ -403,9 +413,20 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Get the data for the resolved tag
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
+				// Ensure backward compatibility by adding customFields to tasks/subtasks that don't have them
+				const tasksWithCustomFields = tagData.tasks.map(task => ({
+					...task,
+					customFields: task.customFields || {},
+					subtasks: task.subtasks ? task.subtasks.map(subtask => ({
+						...subtask,
+						customFields: subtask.customFields || {}
+					})) : (task.subtasks || [])
+				}));
+				
 				// Add the _rawTaggedData property and the resolved tag to the returned data
 				const result = {
 					...tagData,
+					tasks: tasksWithCustomFields,
 					tag: resolvedTag,
 					_rawTaggedData: originalTaggedData
 				};
@@ -419,6 +440,16 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				// If the resolved tag doesn't exist, fall back to master
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
+					// Ensure backward compatibility for master data too
+					const tasksWithCustomFields = masterData.tasks.map(task => ({
+						...task,
+						customFields: task.customFields || {},
+						subtasks: task.subtasks ? task.subtasks.map(subtask => ({
+							...subtask,
+							customFields: subtask.customFields || {}
+						})) : (task.subtasks || [])
+					}));
+					
 					if (isDebug) {
 						console.log(
 							`Tag '${resolvedTag}' not found, falling back to master with ${masterData.tasks.length} tasks`
@@ -426,6 +457,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 					}
 					return {
 						...masterData,
+						tasks: tasksWithCustomFields,
 						tag: 'master',
 						_rawTaggedData: originalTaggedData
 					};
