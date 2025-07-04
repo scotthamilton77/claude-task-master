@@ -222,30 +222,110 @@ Task 15: Implement user authentication [pending]
 
 ## Implementation Plan
 
+### Phase 0: Test-Driven Development Foundation
+
+#### Test Strategy Overview
+All implementation phases must follow a strict test-driven development (TDD) methodology:
+1. Write failing tests first (red phase)
+2. Implement minimal code to pass tests (green phase)
+3. Refactor for clarity and performance (refactor phase)
+4. Maintain 100% test coverage for all new code
+
+#### Test Categories & Scope
+
+##### Unit Tests (`tests/unit/`)
+- **Schema Validation Tests** (`tests/unit/custom-fields-schema.test.js`)
+  - Valid customFields object structures
+  - Invalid field names (reserved words, special characters)
+  - Type validation for field values
+  - Backward compatibility with tasks missing customFields
+  
+- **Query Translation Tests** (`tests/unit/custom-fields-query.test.js`)
+  - Core field vs custom field detection
+  - Query parameter translation accuracy
+  - Invalid field name handling and suggestions
+  - Complex multi-field query combinations
+  
+- **Search Integration Tests** (`tests/unit/custom-fields-search.test.js`)
+  - Dynamic search key generation
+  - Custom field weight calculation
+  - Fuzzy search accuracy with custom fields
+  - Performance benchmarks for large datasets
+
+##### Integration Tests (`tests/integration/`)
+- **Task Creation Tests** (`tests/integration/custom-fields-create.test.js`)
+  - Add tasks with custom fields via MCP tools
+  - Add subtasks with inherited custom fields
+  - Validation error handling and messaging
+  - File format preservation and migration
+  
+- **Task Query Tests** (`tests/integration/custom-fields-query.test.js`)
+  - Single custom field filtering
+  - Multiple custom field combinations
+  - Mixed core and custom field queries
+  - Empty result handling
+  
+- **Task Update Tests** (`tests/integration/custom-fields-update.test.js`)
+  - Set custom fields on existing tasks
+  - Merge custom fields (partial updates)
+  - Unset/remove custom fields
+  - Bulk custom field operations
+
+##### End-to-End Tests (`tests/e2e/`)
+- **CLI Workflow Tests** (`tests/e2e/custom-fields-cli.test.js`)
+  - Complete task creation with custom fields
+  - Query and filter workflows
+  - Custom field management commands
+  - Error scenarios and recovery
+  
+- **MCP Server Tests** (`tests/e2e/custom-fields-mcp.test.js`)
+  - Full MCP tool invocation cycles
+  - Multi-step workflows with custom fields
+  - Performance under load
+  - Concurrent operation handling
+
+#### Test Data & Fixtures
+- **Mock Task Data** (`tests/fixtures/custom-fields/`)
+  - Tasks with various custom field combinations
+  - Legacy tasks without custom fields
+  - Edge cases (empty, null, undefined values)
+  - Large datasets for performance testing
+
+#### Test Implementation Order
+1. **Schema validation tests first** - Define the data contract
+2. **Query translation tests** - Establish query semantics
+3. **Core function unit tests** - Test individual components
+4. **Integration tests** - Verify component interactions
+5. **End-to-end tests** - Validate complete workflows
+
 ### Phase 1: Schema & Core Support
-1. Add `customFields` object to task and subtask schemas
-2. Update Zod validation in task creation functions
-3. Implement backward compatibility handling
-4. Add customFields parameter to add-task and add-subtask functions
+1. Write comprehensive schema validation tests
+2. Add `customFields` object to task and subtask schemas
+3. Update Zod validation in task creation functions
+4. Implement backward compatibility handling
+5. Add customFields parameter to add-task and add-subtask functions
 
 ### Phase 2: Query & Filter Integration
-1. Implement query translation logic (core fields vs customFields)
-2. Add reserved field names validation to prevent conflicts
-3. Extend listTasks function with custom field filtering logic
-4. Add dynamic custom field search capabilities to FuzzyTaskSearch
-5. Update get_tasks MCP tool with hybrid query parameters
+1. Write query translation and filtering tests
+2. Implement query translation logic (core fields vs customFields)
+3. Add reserved field names validation to prevent conflicts
+4. Extend listTasks function with custom field filtering logic
+5. Add dynamic custom field search capabilities to FuzzyTaskSearch
+6. Update get_tasks MCP tool with hybrid query parameters
 
 ### Phase 3: CLI & UX Enhancements
-1. Add CLI commands for custom field management
-2. Update help documentation and examples
-3. Add custom field display in task listings
-4. Implement custom field validation and suggestions
+1. Write CLI command and output formatting tests
+2. Add CLI commands for custom field management
+3. Update help documentation and examples
+4. Add custom field display in task listings
+5. Implement custom field validation and suggestions
 
 ### Phase 4: Advanced Features
-1. Custom field templates for common use cases
-2. Custom field inheritance from parent tasks to subtasks
-3. Custom field-based task grouping and reporting
-4. Integration with complexity analysis
+1. Write tests for advanced feature scenarios
+2. Custom field templates for common use cases
+3. Custom field inheritance from parent tasks to subtasks
+4. Custom field-based task grouping and reporting
+5. Integration with complexity analysis
 
 ## Benefits
 
