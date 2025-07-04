@@ -1,0 +1,372 @@
+#compdef task-master tm taskmaster
+
+_task_master() {
+    local state line
+    typeset -A opt_args
+
+    _arguments -C \
+        "1: :->commands" \
+        "*: :->args"
+
+    case $state in
+        commands)
+            _values 'task-master commands' \
+                'parse-prd[parse-prd command]' \
+                'update[update command]' \
+                'update-task[update-task command]' \
+                'update-subtask[update-subtask command]' \
+                'generate[generate command]' \
+                'set-status[set-status command]' \
+                'list[list command]' \
+                'expand[expand command]' \
+                'analyze-complexity[analyze-complexity command]' \
+                'research[research command]' \
+                'clear-subtasks[clear-subtasks command]' \
+                'add-task[add-task command]' \
+                'next[next command]' \
+                'show[show command]' \
+                'add-dependency[add-dependency command]' \
+                'remove-dependency[remove-dependency command]' \
+                'validate-dependencies[validate-dependencies command]' \
+                'fix-dependencies[fix-dependencies command]' \
+                'complexity-report[complexity-report command]' \
+                'add-subtask[add-subtask command]' \
+                'remove-subtask[remove-subtask command]' \
+                'remove-task[remove-task command]' \
+                'init[init command]' \
+                'models[models command]' \
+                'lang[lang command]' \
+                'move[move command]' \
+                'rules[rules command]' \
+                'migrate[migrate command]' \
+                'sync-readme[sync-readme command]' \
+                'add-tag[add-tag command]' \
+                'delete-tag[delete-tag command]' \
+                'tags[tags command]' \
+                'use-tag[use-tag command]' \
+                'rename-tag[rename-tag command]' \
+                'copy-tag[copy-tag command]'
+            ;;
+        args)
+            case $words[2] in
+                parse-prd)
+                    _task_master_parse_prd
+                    ;;
+                update)
+                    _task_master_update
+                    ;;
+                update-task)
+                    _task_master_update_task
+                    ;;
+                update-subtask)
+                    _task_master_update_subtask
+                    ;;
+                generate)
+                    _task_master_generate
+                    ;;
+                set-status)
+                    _task_master_set_status
+                    ;;
+                list)
+                    _task_master_list
+                    ;;
+                expand)
+                    _task_master_expand
+                    ;;
+                analyze-complexity)
+                    _task_master_analyze_complexity
+                    ;;
+                research)
+                    _task_master_research
+                    ;;
+                clear-subtasks)
+                    _task_master_clear_subtasks
+                    ;;
+                add-task)
+                    _task_master_add_task
+                    ;;
+                next)
+                    _task_master_next
+                    ;;
+                show)
+                    _task_master_show
+                    ;;
+                add-dependency)
+                    _task_master_add_dependency
+                    ;;
+                remove-dependency)
+                    _task_master_remove_dependency
+                    ;;
+                validate-dependencies)
+                    _task_master_validate_dependencies
+                    ;;
+                fix-dependencies)
+                    _task_master_fix_dependencies
+                    ;;
+                complexity-report)
+                    _task_master_complexity_report
+                    ;;
+                add-subtask)
+                    _task_master_add_subtask
+                    ;;
+                remove-subtask)
+                    _task_master_remove_subtask
+                    ;;
+                remove-task)
+                    _task_master_remove_task
+                    ;;
+                init)
+                    _task_master_init
+                    ;;
+                models)
+                    _task_master_models
+                    ;;
+                lang)
+                    _task_master_lang
+                    ;;
+                move)
+                    _task_master_move
+                    ;;
+                rules)
+                    _task_master_rules
+                    ;;
+                migrate)
+                    _task_master_migrate
+                    ;;
+                sync-readme)
+                    _task_master_sync_readme
+                    ;;
+                add-tag)
+                    _task_master_add_tag
+                    ;;
+                delete-tag)
+                    _task_master_delete_tag
+                    ;;
+                tags)
+                    _task_master_tags
+                    ;;
+                use-tag)
+                    _task_master_use_tag
+                    ;;
+                rename-tag)
+                    _task_master_rename_tag
+                    ;;
+                copy-tag)
+                    _task_master_copy_tag
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_task_master_parse_prd() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master parse-prd --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_update() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master update --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_update_task() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master update-task --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_update_subtask() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master update-subtask --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_generate() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master generate --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_set_status() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master set-status --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_list() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master list --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_expand() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master expand --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_analyze_complexity() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master analyze-complexity --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_research() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master research --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_clear_subtasks() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master clear-subtasks --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_add_task() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master add-task --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_next() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master next --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_show() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master show --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_add_dependency() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master add-dependency --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_remove_dependency() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master remove-dependency --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_validate_dependencies() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master validate-dependencies --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_fix_dependencies() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master fix-dependencies --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_complexity_report() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master complexity-report --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_add_subtask() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master add-subtask --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_remove_subtask() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master remove-subtask --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_remove_task() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master remove-task --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_init() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master init --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_models() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master models --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_lang() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master lang --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_move() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master move --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_rules() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master rules --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_migrate() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master migrate --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_sync_readme() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master sync-readme --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_add_tag() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master add-tag --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_delete_tag() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master delete-tag --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_tags() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master tags --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_use_tag() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master use-tag --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_rename_tag() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master rename-tag --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master_copy_tag() {
+    _arguments \
+        '--help[Show help]' \
+        $(task-master copy-tag --help 2>/dev/null | grep -oE -- '--[a-zA-Z-]+' | sed 's/^/"/;s/$/[option]"/')
+}
+
+_task_master "$@"

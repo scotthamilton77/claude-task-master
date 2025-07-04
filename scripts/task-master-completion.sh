@@ -5,7 +5,7 @@ _task_master_completion() {
     _get_comp_words_by_ref -n : cur prev words cword
 
     if [[ ${cword} -eq 1 ]]; then
-        COMPREPLY=( $(compgen -W "parse-prd update update-task update-subtask generate set-status list expand analyze-complexity research clear-subtasks add-task next show add-dependency remove-dependency validate-dependencies fix-dependencies complexity-report add-subtask remove-subtask remove-task init models move rules migrate sync-readme add-tag delete-tag tags use-tag rename-tag copy-tag" -- ${cur}) )
+        COMPREPLY=( $(compgen -W "parse-prd update update-task update-subtask generate set-status list expand analyze-complexity research clear-subtasks add-task next show add-dependency remove-dependency validate-dependencies fix-dependencies complexity-report add-subtask remove-subtask remove-task init models lang move rules migrate sync-readme add-tag delete-tag tags use-tag rename-tag copy-tag" -- ${cur}) )
         return 0
     fi
 

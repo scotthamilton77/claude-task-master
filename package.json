@@ -24,7 +24,8 @@
 		"format-check": "biome format .",
 		"format": "biome format . --write",
 		"test:claude:errors": "node scripts/test-claude-errors.js",
-		"generate-completion": "node scripts/generate-completion.js",
+		"generate-bash-completion": "node scripts/generate-bash-completion.js",
+		"generate-zsh-completion": "node scripts/generate-zsh-completion.js",
 		"publish-local": "npm pack && npm install -g ./task-master-ai-*.tgz"
 	},
 	"keywords": [
