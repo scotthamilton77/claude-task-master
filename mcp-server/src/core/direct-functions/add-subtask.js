@@ -112,7 +112,7 @@ export async function addSubtaskDirect(args, log) {
 				existingTaskId,
 				null,
 				generateFiles,
-				{ projectRoot, tag }, // context
+				context,
 				customFields // Pass custom fields
 			);
 
