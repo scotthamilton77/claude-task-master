@@ -982,7 +982,33 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const fromId = parseInt(options.from, 10); // Validation happens here
-			const prompt = options.prompt;
+			// Extract custom fields from options (any parameter not in core parameters)
+			const coreParameters = new Set([
+				'file',
+				'id',
+				'prompt',
+				'research',
+				'append',
+				'tag'
+			]);
+			const customFields = {};
+			Object.entries(options).forEach(([key, value]) => {
+				if (!coreParameters.has(key) && value !== undefined) {
+					customFields[key] = value;
+				}
+			});
+
+			// Enhance prompt with custom fields if provided
+			let prompt = options.prompt;
+			if (Object.keys(customFields).length > 0) {
+				console.log(
+					chalk.blue(`Custom fields: ${JSON.stringify(customFields)}`)
+				);
+				prompt +=
+					'\n\nAdditionally, update the following custom fields: ' +
+					JSON.stringify(customFields);
+			}
+
 			const useResearch = options.research || false;
 
 			const projectRoot = findProjectRoot();
@@ -1056,7 +1082,7 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('update-task')
 		.description(
-			'Update a single specific task by ID with new information (use --id parameter)'
+			'Update a single specific task by ID with new information and optional custom fields (use --id parameter)'
 		)
 		.option(
 			'-f, --file <file>',
@@ -1077,6 +1103,30 @@ function registerCommands(programInstance) {
 			'Append timestamped information to task details instead of full update'
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option(
+			'--epic <epic>',
+			'Epic identifier (custom field example: EPIC-1234)'
+		)
+		.option(
+			'--component <component>',
+			'Component name (custom field example: auth, ui, api)'
+		)
+		.option(
+			'--assignee <assignee>',
+			'Assigned developer (custom field example: john.doe)'
+		)
+		.option(
+			'--status-notes <status-notes>',
+			'Status notes (custom field example: blocked by API)'
+		)
+		.option(
+			'--priority-reason <priority-reason>',
+			'Priority reason (custom field example: customer escalation)'
+		)
+		.addHelpText(
+			'after',
+			'\nCustom Fields:\n  You can add any custom field using --field-name "value" syntax.\n  Examples: --epic "EPIC-1234" --status-notes "waiting for review"\n'
+		)
 		.action(async (options) => {
 			try {
 				const tasksPath = options.file || TASKMASTER_TASKS_FILE;
@@ -1233,7 +1283,7 @@ function registerCommands(programInstance) {
 	programInstance
 		.command('update-subtask')
 		.description(
-			'Update a subtask by appending additional timestamped information'
+			'Update a subtask by appending additional timestamped information and optional custom fields'
 		)
 		.option(
 			'-f, --file <file>',
@@ -1250,6 +1300,30 @@ function registerCommands(programInstance) {
 		)
 		.option('-r, --research', 'Use Perplexity AI for research-backed updates')
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option(
+			'--assignee <assignee>',
+			'Assigned developer (custom field example: john.doe)'
+		)
+		.option(
+			'--estimate <estimate>',
+			'Time estimate (custom field example: 2h, 1d)'
+		)
+		.option(
+			'--difficulty <difficulty>',
+			'Difficulty level (custom field example: easy, medium, hard)'
+		)
+		.option(
+			'--blockers <blockers>',
+			'Blocking issues (custom field example: API endpoint missing)'
+		)
+		.option(
+			'--notes <notes>',
+			'Additional notes (custom field example: discussed with team)'
+		)
+		.addHelpText(
+			'after',
+			'\nCustom Fields:\n  You can add any custom field using --field-name "value" syntax.\n  Examples: --assignee "jane.doe" --blockers "waiting for API"\n'
+		)
 		.action(async (options) => {
 			try {
 				const tasksPath = options.file || TASKMASTER_TASKS_FILE;
@@ -1307,7 +1381,32 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				const prompt = options.prompt;
+				// Extract custom fields from options (any parameter not in core parameters)
+				const coreParameters = new Set([
+					'file',
+					'id',
+					'prompt',
+					'research',
+					'tag'
+				]);
+				const customFields = {};
+				Object.entries(options).forEach(([key, value]) => {
+					if (!coreParameters.has(key) && value !== undefined) {
+						customFields[key] = value;
+					}
+				});
+
+				// Enhance prompt with custom fields if provided
+				let prompt = options.prompt;
+				if (Object.keys(customFields).length > 0) {
+					console.log(
+						chalk.blue(`Custom fields: ${JSON.stringify(customFields)}`)
+					);
+					prompt +=
+						'\n\nAdditionally, update the following custom fields: ' +
+						JSON.stringify(customFields);
+				}
+
 				const useResearch = options.research || false;
 
 				// Validate tasks file exists
@@ -2144,7 +2243,9 @@ ${result.result}
 	// add-task command
 	programInstance
 		.command('add-task')
-		.description('Add a new task using AI, optionally providing manual details')
+		.description(
+			'Add a new task using AI with optional custom fields (epic, component, assignee, etc.)'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -2177,6 +2278,34 @@ ${result.result}
 			'Whether to use research capabilities for task creation'
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option(
+			'--epic <epic>',
+			'Epic identifier (custom field example: EPIC-1234)'
+		)
+		.option(
+			'--component <component>',
+			'Component name (custom field example: auth, ui, api)'
+		)
+		.option(
+			'--assignee <assignee>',
+			'Assigned developer (custom field example: john.doe)'
+		)
+		.option(
+			'--sprint <sprint>',
+			'Sprint identifier (custom field example: sprint-24)'
+		)
+		.option(
+			'--team <team>',
+			'Team name (custom field example: frontend, backend)'
+		)
+		.option(
+			'--labels <labels>',
+			'Comma-separated labels (custom field example: bug,urgent)'
+		)
+		.addHelpText(
+			'after',
+			'\nCustom Fields:\n  You can add any custom field using --field-name "value" syntax.\n  Examples: --epic "EPIC-1234" --component "auth" --priority-level "high"\n'
+		)
 		.action(async (options) => {
 			const isManualCreation = options.title && options.description;
 
@@ -2243,6 +2372,32 @@ ${result.result}
 				console.log(chalk.blue(`Priority: ${options.priority}`));
 			}
 
+			// Extract custom fields from options (any parameter not in core parameters)
+			const coreParameters = new Set([
+				'file',
+				'prompt',
+				'title',
+				'description',
+				'details',
+				'dependencies',
+				'priority',
+				'research',
+				'tag',
+				'testStrategy'
+			]);
+			const customFields = {};
+			Object.entries(options).forEach(([key, value]) => {
+				if (!coreParameters.has(key) && value !== undefined) {
+					customFields[key] = value;
+				}
+			});
+
+			if (Object.keys(customFields).length > 0) {
+				console.log(
+					chalk.blue(`Custom fields: ${JSON.stringify(customFields)}`)
+				);
+			}
+
 			const context = {
 				projectRoot,
 				tag: options.tag,
@@ -2259,7 +2414,9 @@ ${result.result}
 					context,
 					'text',
 					manualTaskData,
-					options.research
+					options.research,
+					options.tag || getCurrentTag(projectRoot) || 'master',
+					customFields
 				);
 
 				// addTask handles detailed CLI success logging AND telemetry display when outputFormat is 'text'
@@ -2580,7 +2737,9 @@ ${result.result}
 	// add-subtask command
 	programInstance
 		.command('add-subtask')
-		.description('Add a subtask to an existing task')
+		.description(
+			'Add a subtask to an existing task with optional custom fields'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -2601,6 +2760,30 @@ ${result.result}
 		.option('-s, --status <status>', 'Status for the new subtask', 'pending')
 		.option('--skip-generate', 'Skip regenerating task files')
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option(
+			'--epic <epic>',
+			'Epic identifier (custom field example: EPIC-1234)'
+		)
+		.option(
+			'--component <component>',
+			'Component name (custom field example: auth, ui, api)'
+		)
+		.option(
+			'--assignee <assignee>',
+			'Assigned developer (custom field example: john.doe)'
+		)
+		.option(
+			'--estimate <estimate>',
+			'Time estimate (custom field example: 2h, 1d)'
+		)
+		.option(
+			'--difficulty <difficulty>',
+			'Difficulty level (custom field example: easy, medium, hard)'
+		)
+		.addHelpText(
+			'after',
+			'\nCustom Fields:\n  You can add any custom field using --field-name "value" syntax.\n  Examples: --epic "EPIC-1234" --assignee "john.doe" --estimate "4h"\n'
+		)
 		.action(async (options) => {
 			const projectRoot = findProjectRoot();
 			if (!projectRoot) {
@@ -2629,6 +2812,32 @@ ${result.result}
 				process.exit(1);
 			}
 
+			// Extract custom fields from options (any parameter not in core parameters)
+			const coreParameters = new Set([
+				'file',
+				'parent',
+				'taskId',
+				'title',
+				'description',
+				'details',
+				'dependencies',
+				'status',
+				'skipGenerate',
+				'tag'
+			]);
+			const customFields = {};
+			Object.entries(options).forEach(([key, value]) => {
+				if (!coreParameters.has(key) && value !== undefined) {
+					customFields[key] = value;
+				}
+			});
+
+			if (Object.keys(customFields).length > 0) {
+				console.log(
+					chalk.blue(`Custom fields: ${JSON.stringify(customFields)}`)
+				);
+			}
+
 			// Parse dependencies if provided
 			let dependencies = [];
 			if (options.dependencies) {
@@ -2652,7 +2861,8 @@ ${result.result}
 						existingTaskId,
 						null,
 						generateFiles,
-						{ projectRoot, tag }
+						{ projectRoot, tag },
+						customFields
 					);
 					console.log(
 						chalk.green(
@@ -2679,7 +2889,8 @@ ${result.result}
 						null,
 						newSubtaskData,
 						generateFiles,
-						{ projectRoot, tag }
+						{ projectRoot, tag },
+						customFields
 					);
 					console.log(
 						chalk.green(
