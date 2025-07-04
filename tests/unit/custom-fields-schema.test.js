@@ -10,7 +10,14 @@ const TaskSchema = z.object({
 	description: z.string().min(1),
 	details: z.string(),
 	testStrategy: z.string(),
-	status: z.enum(['pending', 'in-progress', 'done', 'review', 'deferred', 'cancelled']),
+	status: z.enum([
+		'pending',
+		'in-progress',
+		'done',
+		'review',
+		'deferred',
+		'cancelled'
+	]),
 	priority: z.enum(['high', 'medium', 'low']).optional(),
 	dependencies: z.array(z.number()).optional(),
 	subtasks: z.array(z.any()).optional(),
@@ -20,15 +27,30 @@ const TaskSchema = z.object({
 const SubtaskSchema = z.object({
 	id: z.string(),
 	title: z.string().min(1),
-	status: z.enum(['pending', 'in-progress', 'done', 'review', 'deferred', 'cancelled']),
+	status: z.enum([
+		'pending',
+		'in-progress',
+		'done',
+		'review',
+		'deferred',
+		'cancelled'
+	]),
 	details: z.string().optional(),
 	customFields: CustomFieldsSchema
 });
 
 // Reserved field names that cannot be used as custom fields
 const RESERVED_FIELD_NAMES = [
-	'id', 'title', 'description', 'details', 'testStrategy',
-	'status', 'priority', 'dependencies', 'subtasks', 'customFields'
+	'id',
+	'title',
+	'description',
+	'details',
+	'testStrategy',
+	'status',
+	'priority',
+	'dependencies',
+	'subtasks',
+	'customFields'
 ];
 
 describe('Custom Fields Schema Validation', () => {
@@ -43,7 +65,7 @@ describe('Custom Fields Schema Validation', () => {
 				status: 'pending',
 				customFields: {}
 			};
-			
+
 			expect(() => TaskSchema.parse(task)).not.toThrow();
 		});
 
@@ -62,7 +84,7 @@ describe('Custom Fields Schema Validation', () => {
 					sprint: '2024-Q1-S3'
 				}
 			};
-			
+
 			expect(() => TaskSchema.parse(task)).not.toThrow();
 		});
 
@@ -80,7 +102,7 @@ describe('Custom Fields Schema Validation', () => {
 					bugSeverity: '1'
 				}
 			};
-			
+
 			expect(() => TaskSchema.parse(task)).not.toThrow();
 		});
 
@@ -99,7 +121,7 @@ describe('Custom Fields Schema Validation', () => {
 					releaseDate: '2024-03-15'
 				}
 			};
-			
+
 			expect(() => TaskSchema.parse(task)).not.toThrow();
 		});
 
@@ -114,21 +136,21 @@ describe('Custom Fields Schema Validation', () => {
 					assignee: 'jane.doe'
 				}
 			};
-			
+
 			expect(() => SubtaskSchema.parse(subtask)).not.toThrow();
 		});
 	});
 
 	describe('Invalid field names', () => {
 		it('should reject reserved field names', () => {
-			RESERVED_FIELD_NAMES.forEach(fieldName => {
+			RESERVED_FIELD_NAMES.forEach((fieldName) => {
 				const customFields = { [fieldName]: 'value' };
-				
+
 				// This test validates the logic we'll implement
-				const isValid = !Object.keys(customFields).some(key => 
+				const isValid = !Object.keys(customFields).some((key) =>
 					RESERVED_FIELD_NAMES.includes(key)
 				);
-				
+
 				expect(isValid).toBe(false);
 			});
 		});
@@ -139,28 +161,29 @@ describe('Custom Fields Schema Validation', () => {
 				'field-name', // hyphens (we'll allow these)
 				'field.name', // dots
 				'field@name', // special characters
-				'123field',   // starting with number
-				''            // empty string
+				'123field', // starting with number
+				'' // empty string
 			];
-			
+
 			const validFieldNames = [
 				'fieldName',
 				'field_name',
 				'field123',
 				'FIELD_NAME',
 				'_privateField',
-				'field-name'  // hyphens are allowed
+				'field-name' // hyphens are allowed
 			];
-			
+
 			const fieldNameRegex = /^[a-zA-Z_-][a-zA-Z0-9_-]*$/;
-			
-			invalidFieldNames.forEach(name => {
-				if (name !== 'field-name') { // hyphens are actually valid
+
+			invalidFieldNames.forEach((name) => {
+				if (name !== 'field-name') {
+					// hyphens are actually valid
 					expect(fieldNameRegex.test(name)).toBe(false);
 				}
 			});
-			
-			validFieldNames.forEach(name => {
+
+			validFieldNames.forEach((name) => {
 				expect(fieldNameRegex.test(name)).toBe(true);
 			});
 		});
@@ -176,7 +199,7 @@ describe('Custom Fields Schema Validation', () => {
 				testStrategy: 'Legacy strategy',
 				status: 'pending'
 			};
-			
+
 			const parsed = TaskSchema.parse(legacyTask);
 			expect(parsed.customFields).toEqual({});
 		});
@@ -187,7 +210,7 @@ describe('Custom Fields Schema Validation', () => {
 				title: 'Legacy subtask',
 				status: 'pending'
 			};
-			
+
 			const parsed = SubtaskSchema.parse(legacySubtask);
 			expect(parsed.customFields).toEqual({});
 		});
@@ -204,12 +227,12 @@ describe('Custom Fields Schema Validation', () => {
 				dependencies: [2, 3],
 				subtasks: []
 			};
-			
+
 			const taskWithCustomFields = {
 				...task,
 				customFields: { epic: 'EPIC-1234' }
 			};
-			
+
 			const parsed = TaskSchema.parse(taskWithCustomFields);
 			expect(parsed).toMatchObject(task);
 			expect(parsed.customFields).toEqual({ epic: 'EPIC-1234' });
@@ -233,9 +256,9 @@ describe('Custom Fields Schema Validation', () => {
 					text: 'some text'
 				}
 			};
-			
+
 			const parsed = TaskSchema.parse(task);
-			Object.values(parsed.customFields).forEach(value => {
+			Object.values(parsed.customFields).forEach((value) => {
 				expect(typeof value).toBe('string');
 			});
 		});
@@ -252,7 +275,7 @@ describe('Custom Fields Schema Validation', () => {
 				status: 'pending',
 				customFields: undefined
 			};
-			
+
 			const parsed = TaskSchema.parse(task);
 			expect(parsed.customFields).toEqual({});
 		});
@@ -267,7 +290,7 @@ describe('Custom Fields Schema Validation', () => {
 				status: 'pending',
 				customFields: null
 			};
-			
+
 			// null should be converted to empty object
 			const parsed = TaskSchema.parse({ ...task, customFields: undefined });
 			expect(parsed.customFields).toEqual({});
@@ -286,7 +309,7 @@ describe('Custom Fields Schema Validation', () => {
 					longField: longValue
 				}
 			};
-			
+
 			expect(() => TaskSchema.parse(task)).not.toThrow();
 		});
 
@@ -295,7 +318,7 @@ describe('Custom Fields Schema Validation', () => {
 			for (let i = 0; i < 100; i++) {
 				customFields[`field${i}`] = `value${i}`;
 			}
-			
+
 			const task = {
 				id: 1,
 				title: 'Test task',
@@ -305,7 +328,7 @@ describe('Custom Fields Schema Validation', () => {
 				status: 'pending',
 				customFields
 			};
-			
+
 			expect(() => TaskSchema.parse(task)).not.toThrow();
 		});
 	});

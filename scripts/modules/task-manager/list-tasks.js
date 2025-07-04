@@ -66,35 +66,40 @@ function listTasks(
 		const queryParams = {
 			...customFieldFilters
 		};
-		
+
 		// Add status filter if specified
 		if (statusFilter && statusFilter.toLowerCase() !== 'all') {
 			queryParams.status = statusFilter;
 		}
-		
+
 		// Validate query parameters
 		const availableCustomFields = extractCustomFieldNames(data.tasks);
-		const validation = validateQueryParameters(queryParams, availableCustomFields);
-		
+		const validation = validateQueryParameters(
+			queryParams,
+			availableCustomFields
+		);
+
 		// Report validation warnings if in text mode
 		if (outputFormat === 'text') {
 			if (validation.warnings.length > 0) {
-				validation.warnings.forEach(warning => {
+				validation.warnings.forEach((warning) => {
 					log('warn', warning);
 				});
 			}
 			if (validation.suggestions.length > 0) {
-				validation.suggestions.forEach(suggestion => {
+				validation.suggestions.forEach((suggestion) => {
 					log('info', suggestion);
 				});
 			}
 		}
-		
+
 		// If there are validation errors, throw an exception
 		if (!validation.valid) {
-			throw new Error(`Query validation failed: ${validation.errors.join(', ')}`);
+			throw new Error(
+				`Query validation failed: ${validation.errors.join(', ')}`
+			);
 		}
-		
+
 		// Apply filtering using the query translator
 		let filteredTasks;
 		if (Object.keys(queryParams).length > 0) {

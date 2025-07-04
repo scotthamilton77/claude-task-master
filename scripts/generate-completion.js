@@ -4,13 +4,13 @@ import path from 'path';
 import { registerCommands } from './modules/commands.js';
 
 function generateBashCompletion() {
-    const program = new Command();
-    // We need to register the commands to inspect them.
-    registerCommands(program);
+	const program = new Command();
+	// We need to register the commands to inspect them.
+	registerCommands(program);
 
-    const commands = program.commands.map(cmd => cmd.name());
+	const commands = program.commands.map((cmd) => cmd.name());
 
-    let script = `#!/usr/bin/env bash
+	let script = `#!/usr/bin/env bash
 
 _task_master_completion() {
     local cur prev words cword
@@ -41,10 +41,10 @@ complete -F _task_master_completion tm
 complete -F _task_master_completion taskmaster
 `;
 
-    const outputPath = path.resolve(process.cwd(), 'task-master-completion.sh');
-    fs.writeFileSync(outputPath, script);
-    console.log(`Bash completion script generated at: ${outputPath}`);
-    console.log(`To use it, run: source ${outputPath}`);
+	const outputPath = path.resolve(process.cwd(), 'task-master-completion.sh');
+	fs.writeFileSync(outputPath, script);
+	console.log(`Bash completion script generated at: ${outputPath}`);
+	console.log(`To use it, run: source ${outputPath}`);
 }
 
 generateBashCompletion();

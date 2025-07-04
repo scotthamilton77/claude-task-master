@@ -8,16 +8,26 @@ class CustomFieldQueryEngine {
 	constructor(tasksData) {
 		this.tasks = tasksData.tasks || [];
 	}
-	
+
 	// Translate query parameters into core and custom field filters
 	translateQuery(params) {
-		const coreFields = ['id', 'title', 'description', 'details', 'testStrategy', 'status', 'priority', 'dependencies', 'subtasks'];
-		
+		const coreFields = [
+			'id',
+			'title',
+			'description',
+			'details',
+			'testStrategy',
+			'status',
+			'priority',
+			'dependencies',
+			'subtasks'
+		];
+
 		const translated = {
 			coreFilters: {},
 			customFilters: {}
 		};
-		
+
 		Object.entries(params).forEach(([key, value]) => {
 			if (coreFields.includes(key)) {
 				translated.coreFilters[key] = value;
@@ -25,62 +35,67 @@ class CustomFieldQueryEngine {
 				translated.customFilters[key] = value;
 			}
 		});
-		
+
 		return translated;
 	}
-	
+
 	// Apply filters to tasks
 	filterTasks(filters) {
 		let results = [...this.tasks];
-		
+
 		// Apply core field filters
 		Object.entries(filters.coreFilters).forEach(([field, value]) => {
-			results = results.filter(task => {
+			results = results.filter((task) => {
 				if (field === 'status' && value.includes(',')) {
 					// Handle comma-separated status values
-					const statuses = value.split(',').map(s => s.trim());
+					const statuses = value.split(',').map((s) => s.trim());
 					return statuses.includes(task[field]);
 				}
-				return task[field] === value || (task[field] && task[field].toString().includes(value));
+				return (
+					task[field] === value ||
+					(task[field] && task[field].toString().includes(value))
+				);
 			});
 		});
-		
+
 		// Apply custom field filters
 		Object.entries(filters.customFilters).forEach(([field, value]) => {
-			results = results.filter(task => {
+			results = results.filter((task) => {
 				if (!task.customFields || !task.customFields[field]) {
 					return false;
 				}
-				
+
 				if (value.includes(',')) {
 					// Handle comma-separated values
-					const values = value.split(',').map(v => v.trim());
+					const values = value.split(',').map((v) => v.trim());
 					return values.includes(task.customFields[field]);
 				}
-				
-				return task.customFields[field] === value || 
-					   task.customFields[field].includes(value);
+
+				return (
+					task.customFields[field] === value ||
+					task.customFields[field].includes(value)
+				);
 			});
 		});
-		
+
 		return results;
 	}
-	
+
 	// Main query method
 	query(params) {
 		const filters = this.translateQuery(params);
 		return this.filterTasks(filters);
 	}
-	
+
 	// Query with subtasks included
 	queryWithSubtasks(params) {
 		const results = this.query(params);
-		
+
 		// Also search subtasks
 		const subtaskResults = [];
-		this.tasks.forEach(task => {
+		this.tasks.forEach((task) => {
 			if (task.subtasks) {
-				task.subtasks.forEach(subtask => {
+				task.subtasks.forEach((subtask) => {
 					const subtaskMatches = this.matchesCustomFields(subtask, params);
 					if (subtaskMatches) {
 						subtaskResults.push({
@@ -91,24 +106,24 @@ class CustomFieldQueryEngine {
 				});
 			}
 		});
-		
+
 		return [...results, ...subtaskResults];
 	}
-	
+
 	// Check if task/subtask matches custom field criteria
 	matchesCustomFields(item, params) {
 		const filters = this.translateQuery(params);
-		
+
 		return Object.entries(filters.customFilters).every(([field, value]) => {
 			if (!item.customFields || !item.customFields[field]) {
 				return false;
 			}
-			
+
 			if (value.includes(',')) {
-				const values = value.split(',').map(v => v.trim());
+				const values = value.split(',').map((v) => v.trim());
 				return values.includes(item.customFields[field]);
 			}
-			
+
 			return item.customFields[field] === value;
 		});
 	}
@@ -125,15 +140,15 @@ describe('Custom Fields Query Integration', () => {
 		// Create temporary directory
 		testDir = await fs.mkdtemp(path.join(tmpdir(), 'taskmaster-test-'));
 		projectRoot = testDir;
-		
+
 		// Create directory structure
 		const taskMasterDir = path.join(projectRoot, '.taskmaster');
 		const tasksDir = path.join(taskMasterDir, 'tasks');
 		await fs.mkdir(taskMasterDir, { recursive: true });
 		await fs.mkdir(tasksDir, { recursive: true });
-		
+
 		tasksFilePath = path.join(tasksDir, 'tasks.json');
-		
+
 		// Create sample tasks data
 		sampleTasksData = {
 			currentTag: 'master',
@@ -218,10 +233,10 @@ describe('Custom Fields Query Integration', () => {
 				}
 			]
 		};
-		
+
 		// Write sample data to file
 		await fs.writeFile(tasksFilePath, JSON.stringify(sampleTasksData, null, 2));
-		
+
 		// Initialize query engine
 		queryEngine = new CustomFieldQueryEngine(sampleTasksData);
 	});
@@ -234,41 +249,41 @@ describe('Custom Fields Query Integration', () => {
 	describe('Single custom field filtering', () => {
 		it('should filter by epic', () => {
 			const results = queryEngine.query({ epic: 'EPIC-1234' });
-			
+
 			expect(results).toHaveLength(2);
-			expect(results.map(r => r.id)).toEqual([1, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 3]);
 		});
 
 		it('should filter by component', () => {
 			const results = queryEngine.query({ component: 'database' });
-			
+
 			expect(results).toHaveLength(1);
 			expect(results[0].id).toBe(2);
 		});
 
 		it('should filter by task type', () => {
 			const results = queryEngine.query({ taskType: 'feature' });
-			
+
 			expect(results).toHaveLength(2);
-			expect(results.map(r => r.id)).toEqual([1, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 3]);
 		});
 
 		it('should filter by assignee', () => {
 			const results = queryEngine.query({ assignee: 'john.doe' });
-			
+
 			expect(results).toHaveLength(2);
-			expect(results.map(r => r.id)).toEqual([1, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 3]);
 		});
 
 		it('should return empty for non-existent custom field values', () => {
 			const results = queryEngine.query({ epic: 'EPIC-9999' });
-			
+
 			expect(results).toHaveLength(0);
 		});
 
 		it('should return empty for non-existent custom field names', () => {
 			const results = queryEngine.query({ nonExistentField: 'value' });
-			
+
 			expect(results).toHaveLength(0);
 		});
 	});
@@ -279,9 +294,9 @@ describe('Custom Fields Query Integration', () => {
 				epic: 'EPIC-1234',
 				assignee: 'john.doe'
 			});
-			
+
 			expect(results).toHaveLength(2);
-			expect(results.map(r => r.id)).toEqual([1, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 3]);
 		});
 
 		it('should filter by epic and component', () => {
@@ -289,7 +304,7 @@ describe('Custom Fields Query Integration', () => {
 				epic: 'EPIC-1234',
 				component: 'auth'
 			});
-			
+
 			expect(results).toHaveLength(1);
 			expect(results[0].id).toBe(1);
 		});
@@ -297,9 +312,9 @@ describe('Custom Fields Query Integration', () => {
 		it('should handle no matches for multiple fields', () => {
 			const results = queryEngine.query({
 				epic: 'EPIC-1234',
-				component: 'database'  // No task has both
+				component: 'database' // No task has both
 			});
-			
+
 			expect(results).toHaveLength(0);
 		});
 
@@ -309,7 +324,7 @@ describe('Custom Fields Query Integration', () => {
 				assignee: 'john.doe',
 				taskType: 'feature'
 			});
-			
+
 			expect(results).toHaveLength(2);
 		});
 	});
@@ -320,9 +335,9 @@ describe('Custom Fields Query Integration', () => {
 				status: 'pending',
 				epic: 'EPIC-1234'
 			});
-			
+
 			expect(results).toHaveLength(2);
-			expect(results.map(r => r.id)).toEqual([1, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 3]);
 		});
 
 		it('should combine core priority with custom component', () => {
@@ -330,7 +345,7 @@ describe('Custom Fields Query Integration', () => {
 				priority: 'high',
 				component: 'auth'
 			});
-			
+
 			expect(results).toHaveLength(1);
 			expect(results[0].id).toBe(1);
 		});
@@ -339,9 +354,9 @@ describe('Custom Fields Query Integration', () => {
 			const results = queryEngine.query({
 				status: 'pending'
 			});
-			
+
 			expect(results).toHaveLength(3); // Tasks 1, 3, and 4
-			expect(results.map(r => r.id)).toEqual([1, 3, 4]);
+			expect(results.map((r) => r.id)).toEqual([1, 3, 4]);
 		});
 
 		it('should exclude tasks without custom fields when using custom field filters', () => {
@@ -349,10 +364,10 @@ describe('Custom Fields Query Integration', () => {
 				status: 'pending',
 				epic: 'EPIC-1234'
 			});
-			
+
 			// Task 4 has status='pending' but no epic, so excluded
 			expect(results).toHaveLength(2);
-			expect(results.map(r => r.id)).toEqual([1, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 3]);
 		});
 	});
 
@@ -361,9 +376,9 @@ describe('Custom Fields Query Integration', () => {
 			const results = queryEngine.query({
 				epic: 'EPIC-1234,EPIC-5678'
 			});
-			
+
 			expect(results).toHaveLength(3); // All tasks with either epic
-			expect(results.map(r => r.id)).toEqual([1, 2, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 2, 3]);
 		});
 
 		it('should handle comma-separated status with custom fields', () => {
@@ -371,18 +386,18 @@ describe('Custom Fields Query Integration', () => {
 				status: 'pending,in-progress',
 				component: 'auth,database'
 			});
-			
+
 			expect(results).toHaveLength(2); // Tasks 1 and 2
-			expect(results.map(r => r.id)).toEqual([1, 2]);
+			expect(results.map((r) => r.id)).toEqual([1, 2]);
 		});
 
 		it('should handle comma-separated assignees', () => {
 			const results = queryEngine.query({
 				assignee: 'john.doe,jane.smith'
 			});
-			
+
 			expect(results).toHaveLength(3);
-			expect(results.map(r => r.id)).toEqual([1, 2, 3]);
+			expect(results.map((r) => r.id)).toEqual([1, 2, 3]);
 		});
 	});
 
@@ -391,7 +406,7 @@ describe('Custom Fields Query Integration', () => {
 			const results = queryEngine.query({
 				epic: 'NONEXISTENT'
 			});
-			
+
 			expect(results).toEqual([]);
 		});
 
@@ -400,7 +415,7 @@ describe('Custom Fields Query Integration', () => {
 				taskType: 'feature',
 				component: 'database' // No feature tasks in database component
 			});
-			
+
 			expect(results).toEqual([]);
 		});
 
@@ -419,13 +434,13 @@ describe('Custom Fields Query Integration', () => {
 					assignee: ''
 				}
 			};
-			
+
 			queryEngine.tasks.push(taskWithNulls);
-			
+
 			const results = queryEngine.query({ epic: 'EPIC-1234' });
-			
+
 			// Should not include task with null epic
-			expect(results.map(r => r.id)).not.toContain(5);
+			expect(results.map((r) => r.id)).not.toContain(5);
 		});
 	});
 
@@ -434,10 +449,10 @@ describe('Custom Fields Query Integration', () => {
 			const results = queryEngine.queryWithSubtasks({
 				assignee: 'alice.jones'
 			});
-			
+
 			// Should find task 2 because its subtask has assignee='alice.jones'
 			expect(results.length).toBeGreaterThan(0);
-			const parentTaskFound = results.some(r => r.id === 2);
+			const parentTaskFound = results.some((r) => r.id === 2);
 			expect(parentTaskFound).toBe(true);
 		});
 
@@ -445,9 +460,9 @@ describe('Custom Fields Query Integration', () => {
 			const results = queryEngine.queryWithSubtasks({
 				component: 'database-analysis'
 			});
-			
+
 			expect(results.length).toBeGreaterThan(0);
-			const foundResult = results.find(r => r.id === 2);
+			const foundResult = results.find((r) => r.id === 2);
 			expect(foundResult).toBeDefined();
 			expect(foundResult.matchedSubtask).toBeDefined();
 		});
@@ -456,11 +471,11 @@ describe('Custom Fields Query Integration', () => {
 			const results = queryEngine.queryWithSubtasks({
 				component: 'database'
 			});
-			
+
 			// Should find task 2 directly (parent has component='database')
 			// and possibly through subtask matching
 			expect(results.length).toBeGreaterThan(0);
-			expect(results.some(r => r.id === 2)).toBe(true);
+			expect(results.some((r) => r.id === 2)).toBe(true);
 		});
 	});
 
@@ -470,9 +485,9 @@ describe('Custom Fields Query Integration', () => {
 			const content = await fs.readFile(tasksFilePath, 'utf-8');
 			const tasksData = JSON.parse(content);
 			const fileQueryEngine = new CustomFieldQueryEngine(tasksData);
-			
+
 			const results = fileQueryEngine.query({ epic: 'EPIC-1234' });
-			
+
 			expect(results).toHaveLength(2);
 		});
 
@@ -480,7 +495,7 @@ describe('Custom Fields Query Integration', () => {
 			// Add new task to file
 			const content = await fs.readFile(tasksFilePath, 'utf-8');
 			const tasksData = JSON.parse(content);
-			
+
 			tasksData.tasks.push({
 				id: 5,
 				title: 'New task',
@@ -493,16 +508,16 @@ describe('Custom Fields Query Integration', () => {
 					component: 'new-component'
 				}
 			});
-			
+
 			await fs.writeFile(tasksFilePath, JSON.stringify(tasksData, null, 2));
-			
+
 			// Re-read and query
 			const updatedContent = await fs.readFile(tasksFilePath, 'utf-8');
 			const updatedTasksData = JSON.parse(updatedContent);
 			const updatedQueryEngine = new CustomFieldQueryEngine(updatedTasksData);
-			
+
 			const results = updatedQueryEngine.query({ epic: 'EPIC-1234' });
-			
+
 			expect(results).toHaveLength(3); // Now includes the new task
 		});
 	});
@@ -526,13 +541,15 @@ describe('Custom Fields Query Integration', () => {
 					}
 				});
 			}
-			
-			const largeQueryEngine = new CustomFieldQueryEngine({ tasks: largeTasks });
-			
+
+			const largeQueryEngine = new CustomFieldQueryEngine({
+				tasks: largeTasks
+			});
+
 			const startTime = Date.now();
 			const results = largeQueryEngine.query({ epic: 'EPIC-50' });
 			const endTime = Date.now();
-			
+
 			expect(results.length).toBeGreaterThan(0);
 			expect(endTime - startTime).toBeLessThan(50); // Should be fast
 		});

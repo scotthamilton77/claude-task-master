@@ -118,7 +118,10 @@ async function addTask(
 	const effectivePriority = priority || getDefaultPriority(projectRoot);
 
 	// Validate custom fields using shared validator
-	const validatedCustomFields = validateCustomFieldsWithLogging(customFields, logFn);
+	const validatedCustomFields = validateCustomFieldsWithLogging(
+		customFields,
+		logFn
+	);
 
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`

@@ -19,50 +19,78 @@ import { findTasksPath } from '../core/utils/path-utils.js';
 export function registerAddTaskTool(server) {
 	server.addTool({
 		name: 'add_task',
-		description: 'Add a new task using AI',
-		parameters: z.object({
-			prompt: z
-				.string()
-				.optional()
-				.describe(
-					'Description of the task to add (required if not using manual fields)'
-				),
-			title: z
-				.string()
-				.optional()
-				.describe('Task title (for manual task creation)'),
-			description: z
-				.string()
-				.optional()
-				.describe('Task description (for manual task creation)'),
-			details: z
-				.string()
-				.optional()
-				.describe('Implementation details (for manual task creation)'),
-			testStrategy: z
-				.string()
-				.optional()
-				.describe('Test strategy (for manual task creation)'),
-			dependencies: z
-				.string()
-				.optional()
-				.describe('Comma-separated list of task IDs this task depends on'),
-			priority: z
-				.string()
-				.optional()
-				.describe('Task priority (high, medium, low)'),
-			file: z
-				.string()
-				.optional()
-				.describe('Path to the tasks file (default: tasks/tasks.json)'),
-			projectRoot: z
-				.string()
-				.describe('The directory of the project. Must be an absolute path.'),
-			research: z
-				.boolean()
-				.optional()
-				.describe('Whether to use research capabilities for task creation')
-		}),
+		description:
+			'Add a new task using AI with optional custom fields for project-specific metadata (epic, component, assignee, etc.)',
+		parameters: z
+			.object({
+				prompt: z
+					.string()
+					.optional()
+					.describe(
+						'Description of the task to add (required if not using manual fields)'
+					),
+				title: z
+					.string()
+					.optional()
+					.describe('Task title (for manual task creation)'),
+				description: z
+					.string()
+					.optional()
+					.describe('Task description (for manual task creation)'),
+				details: z
+					.string()
+					.optional()
+					.describe('Implementation details (for manual task creation)'),
+				testStrategy: z
+					.string()
+					.optional()
+					.describe('Test strategy (for manual task creation)'),
+				dependencies: z
+					.string()
+					.optional()
+					.describe('Comma-separated list of task IDs this task depends on'),
+				priority: z
+					.string()
+					.optional()
+					.describe('Task priority (high, medium, low)'),
+				file: z
+					.string()
+					.optional()
+					.describe('Path to the tasks file (default: tasks/tasks.json)'),
+				projectRoot: z
+					.string()
+					.describe('The directory of the project. Must be an absolute path.'),
+				research: z
+					.boolean()
+					.optional()
+					.describe('Whether to use research capabilities for task creation'),
+				// Custom field examples - these demonstrate the pattern
+				epic: z
+					.string()
+					.optional()
+					.describe('Epic identifier (custom field example: EPIC-1234)'),
+				component: z
+					.string()
+					.optional()
+					.describe('Component name (custom field example: auth, ui, api)'),
+				assignee: z
+					.string()
+					.optional()
+					.describe('Assigned developer (custom field example: john.doe)'),
+				sprint: z
+					.string()
+					.optional()
+					.describe('Sprint identifier (custom field example: sprint-24)'),
+				team: z
+					.string()
+					.optional()
+					.describe('Team name (custom field example: frontend, backend)'),
+				labels: z
+					.string()
+					.optional()
+					.describe('Comma-separated labels (custom field example: bug,urgent)')
+			})
+			.passthrough(), // Allow additional custom field parameters
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
@@ -81,7 +109,27 @@ export function registerAddTaskTool(server) {
 					);
 				}
 
-				// Call the direct functionP
+				// Extract custom fields from args (any parameter not in core parameters)
+				const coreParameters = new Set([
+					'prompt',
+					'title',
+					'description',
+					'details',
+					'testStrategy',
+					'dependencies',
+					'priority',
+					'file',
+					'projectRoot',
+					'research'
+				]);
+				const customFields = {};
+				Object.entries(args).forEach(([key, value]) => {
+					if (!coreParameters.has(key) && value !== undefined) {
+						customFields[key] = value;
+					}
+				});
+
+				// Call the direct function
 				const result = await addTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -93,7 +141,8 @@ export function registerAddTaskTool(server) {
 						dependencies: args.dependencies,
 						priority: args.priority,
 						research: args.research,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						customFields: customFields
 					},
 					log,
 					{ session }

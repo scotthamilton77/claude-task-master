@@ -26,7 +26,10 @@ async function addSubtask(
 		log('info', `Adding subtask to parent task ${parentId}...`);
 
 		// Validate custom fields using shared validator
-		const validatedCustomFields = validateCustomFieldsWithLogging(customFields, log);
+		const validatedCustomFields = validateCustomFieldsWithLogging(
+			customFields,
+			log
+		);
 
 		// Read the existing tasks with proper context
 		const data = readJSON(tasksPath, context.projectRoot, context.tag);

@@ -29,14 +29,15 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function addTaskDirect(args, log, context = {}) {
-	// Destructure expected args (including research and projectRoot)
+	// Destructure expected args (including research, projectRoot, and customFields)
 	const {
 		tasksJsonPath,
 		prompt,
 		dependencies,
 		priority,
 		research,
-		projectRoot
+		projectRoot,
+		customFields = {}
 	} = args;
 	const { session } = context; // Destructure session from context
 
@@ -126,7 +127,8 @@ export async function addTaskDirect(args, log, context = {}) {
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
 				false, // research flag is false for manual creation
-				projectRoot // Pass projectRoot
+				null, // tag
+				customFields // Pass the custom fields
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
@@ -152,7 +154,9 @@ export async function addTaskDirect(args, log, context = {}) {
 				},
 				'json', // outputFormat
 				null, // manualTaskData is null for AI creation
-				research // Pass the research flag
+				research, // Pass the research flag
+				null, // tag
+				customFields // Pass the custom fields
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;

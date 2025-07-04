@@ -2,9 +2,21 @@ import { describe, it, expect } from '@jest/globals';
 
 // Core field names that are built into TaskMaster
 const CORE_FIELDS = [
-	'id', 'title', 'description', 'details', 'testStrategy',
-	'status', 'priority', 'dependencies', 'subtasks', 'customFields',
-	'file', 'projectRoot', 'tag', 'withSubtasks', 'complexityReport'
+	'id',
+	'title',
+	'description',
+	'details',
+	'testStrategy',
+	'status',
+	'priority',
+	'dependencies',
+	'subtasks',
+	'customFields',
+	'file',
+	'projectRoot',
+	'tag',
+	'withSubtasks',
+	'complexityReport'
 ];
 
 // Query translator function that will be implemented in Phase 2
@@ -13,7 +25,7 @@ function translateQueryParameters(params) {
 		coreFields: {},
 		customFields: {}
 	};
-	
+
 	Object.entries(params).forEach(([key, value]) => {
 		if (CORE_FIELDS.includes(key)) {
 			translated.coreFields[key] = value;
@@ -21,7 +33,7 @@ function translateQueryParameters(params) {
 			translated.customFields[key] = value;
 		}
 	});
-	
+
 	return translated;
 }
 
@@ -29,55 +41,73 @@ function translateQueryParameters(params) {
 function validateFieldName(fieldName) {
 	// Check if it's a reserved/core field
 	if (CORE_FIELDS.includes(fieldName)) {
-		return { valid: false, reason: 'reserved', suggestion: `Use a different name, '${fieldName}' is a reserved field` };
+		return {
+			valid: false,
+			reason: 'reserved',
+			suggestion: `Use a different name, '${fieldName}' is a reserved field`
+		};
 	}
-	
+
 	// Check field name format
 	const fieldNameRegex = /^[a-zA-Z_-][a-zA-Z0-9_-]*$/;
 	if (!fieldNameRegex.test(fieldName)) {
-		return { valid: false, reason: 'format', suggestion: 'Field names must start with a letter, underscore, or hyphen, and contain only letters, numbers, underscores, and hyphens' };
+		return {
+			valid: false,
+			reason: 'format',
+			suggestion:
+				'Field names must start with a letter, underscore, or hyphen, and contain only letters, numbers, underscores, and hyphens'
+		};
 	}
-	
+
 	return { valid: true };
 }
 
 // Fuzzy field name suggester
 function suggestFieldName(input, availableFields) {
 	const lowercaseInput = input.toLowerCase();
-	
+
 	// Exact match (case-insensitive)
-	const exactMatch = availableFields.find(field => field.toLowerCase() === lowercaseInput);
+	const exactMatch = availableFields.find(
+		(field) => field.toLowerCase() === lowercaseInput
+	);
 	if (exactMatch) return exactMatch;
-	
+
 	// Prefix match
-	const prefixMatch = availableFields.find(field => field.toLowerCase().startsWith(lowercaseInput));
+	const prefixMatch = availableFields.find((field) =>
+		field.toLowerCase().startsWith(lowercaseInput)
+	);
 	if (prefixMatch) return prefixMatch;
-	
+
 	// Contains match
-	const containsMatch = availableFields.find(field => field.toLowerCase().includes(lowercaseInput));
+	const containsMatch = availableFields.find((field) =>
+		field.toLowerCase().includes(lowercaseInput)
+	);
 	if (containsMatch) return containsMatch;
-	
+
 	// Levenshtein distance for close matches
 	const closeMatch = availableFields
-		.map(field => ({ field, distance: levenshteinDistance(lowercaseInput, field.toLowerCase()) }))
+		.map((field) => ({
+			field,
+			distance: levenshteinDistance(lowercaseInput, field.toLowerCase())
+		}))
 		.filter(({ distance }) => distance <= 2)
 		.sort((a, b) => a.distance - b.distance)[0];
-	
+
 	return closeMatch ? closeMatch.field : null;
 }
 
 // Simple Levenshtein distance implementation
 function levenshteinDistance(a, b) {
 	const matrix = [];
-	
+
 	for (let i = 0; i <= b.length; i++) {
 		matrix[i] = [i];
 	}
-	
+
 	for (let j = 0; j <= a.length; j++) {
 		matrix[0][j] = j;
 	}
-	
+
 	for (let i = 1; i <= b.length; i++) {
 		for (let j = 1; j <= a.length; j++) {
 			if (b.charAt(i - 1) === a.charAt(j - 1)) {
@@ -91,7 +121,7 @@ function levenshteinDistance(a, b) {
 			}
 		}
 	}
-	
+
 	return matrix[b.length][a.length];
 }
 
@@ -104,9 +134,9 @@ describe('Custom Fields Query Translation', () => {
 				id: '15',
 				withSubtasks: true
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(translated.coreFields).toEqual(params);
 			expect(translated.customFields).toEqual({});
 		});
@@ -118,9 +148,9 @@ describe('Custom Fields Query Translation', () => {
 				sprint: '2024-Q1-S3',
 				assignee: 'john.doe'
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(translated.coreFields).toEqual({});
 			expect(translated.customFields).toEqual(params);
 		});
@@ -133,9 +163,9 @@ describe('Custom Fields Query Translation', () => {
 				component: 'auth',
 				assignee: 'john.doe'
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(translated.coreFields).toEqual({
 				status: 'pending',
 				priority: 'high'
@@ -156,9 +186,9 @@ describe('Custom Fields Query Translation', () => {
 				estimatedHours: '16',
 				isUrgent: 'true'
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(translated.coreFields.status).toBe('pending,in-progress');
 			expect(translated.customFields.epic).toBe('EPIC-1234');
 			expect(translated.customFields.estimatedHours).toBe('16');
@@ -172,9 +202,9 @@ describe('Custom Fields Query Translation', () => {
 				component: undefined,
 				sprint: null
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(translated.coreFields.status).toBe('');
 			expect(translated.customFields.epic).toBe('');
 			expect(translated.customFields.component).toBeUndefined();
@@ -184,7 +214,7 @@ describe('Custom Fields Query Translation', () => {
 
 	describe('Invalid field name handling', () => {
 		it('should reject reserved field names', () => {
-			CORE_FIELDS.forEach(fieldName => {
+			CORE_FIELDS.forEach((fieldName) => {
 				const result = validateFieldName(fieldName);
 				expect(result.valid).toBe(false);
 				expect(result.reason).toBe('reserved');
@@ -193,16 +223,16 @@ describe('Custom Fields Query Translation', () => {
 
 		it('should reject invalid field name formats', () => {
 			const invalidNames = [
-				'123field',      // starts with number
-				'field name',    // contains space
-				'field@name',    // contains special char
-				'field.name',    // contains dot
-				'',              // empty
-				'field!',        // exclamation
-				'field#tag'      // hash
+				'123field', // starts with number
+				'field name', // contains space
+				'field@name', // contains special char
+				'field.name', // contains dot
+				'', // empty
+				'field!', // exclamation
+				'field#tag' // hash
 			];
-			
-			invalidNames.forEach(name => {
+
+			invalidNames.forEach((name) => {
 				const result = validateFieldName(name);
 				expect(result.valid).toBe(false);
 				expect(result.reason).toBe('format');
@@ -221,8 +251,8 @@ describe('Custom Fields Query Translation', () => {
 				'epic123',
 				'epic_123'
 			];
-			
-			validNames.forEach(name => {
+
+			validNames.forEach((name) => {
 				const result = validateFieldName(name);
 				expect(result.valid).toBe(true);
 			});
@@ -230,7 +260,14 @@ describe('Custom Fields Query Translation', () => {
 	});
 
 	describe('Field name suggestions', () => {
-		const availableFields = ['epic', 'component', 'sprint', 'assignee', 'taskType', 'riskLevel'];
+		const availableFields = [
+			'epic',
+			'component',
+			'sprint',
+			'assignee',
+			'taskType',
+			'riskLevel'
+		];
 
 		it('should suggest exact matches (case-insensitive)', () => {
 			expect(suggestFieldName('EPIC', availableFields)).toBe('epic');
@@ -269,9 +306,9 @@ describe('Custom Fields Query Translation', () => {
 				component: 'auth,database',
 				sprint: '2024-Q1-S3'
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(translated.coreFields).toEqual({
 				status: 'pending,in-progress',
 				priority: 'high'
@@ -291,7 +328,7 @@ describe('Custom Fields Query Translation', () => {
 				withSubtasks: true,
 				file: 'tasks.json',
 				projectRoot: '/path/to/project',
-				
+
 				// Custom fields
 				epic: 'EPIC-1234',
 				component: 'auth',
@@ -299,9 +336,9 @@ describe('Custom Fields Query Translation', () => {
 				taskType: 'story',
 				estimatedHours: '16'
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			expect(Object.keys(translated.coreFields)).toHaveLength(5);
 			expect(Object.keys(translated.customFields)).toHaveLength(5);
 		});
@@ -322,13 +359,13 @@ describe('Custom Fields Query Translation', () => {
 	describe('Case sensitivity handling', () => {
 		it('should handle case-sensitive custom field names', () => {
 			const params = {
-				Epic: 'EPIC-1234',      // capital E
-				COMPONENT: 'auth',      // all caps
-				assignee: 'john.doe'    // lowercase
+				Epic: 'EPIC-1234', // capital E
+				COMPONENT: 'auth', // all caps
+				assignee: 'john.doe' // lowercase
 			};
-			
+
 			const translated = translateQueryParameters(params);
-			
+
 			// Custom fields should preserve case
 			expect(translated.customFields).toEqual({
 				Epic: 'EPIC-1234',
@@ -340,4 +377,9 @@ describe('Custom Fields Query Translation', () => {
 });
 
 // Export for use in implementation
-export { translateQueryParameters, validateFieldName, suggestFieldName, CORE_FIELDS };
+export {
+	translateQueryParameters,
+	validateFieldName,
+	suggestFieldName,
+	CORE_FIELDS
+};

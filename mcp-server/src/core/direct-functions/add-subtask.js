@@ -34,7 +34,8 @@ export async function addSubtaskDirect(args, log) {
 		details,
 		status,
 		dependencies: dependenciesStr,
-		skipGenerate
+		skipGenerate,
+		customFields = {}
 	} = args;
 	try {
 		log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
@@ -104,7 +105,9 @@ export async function addSubtaskDirect(args, log) {
 				parentId,
 				existingTaskId,
 				null,
-				generateFiles
+				generateFiles,
+				{}, // context
+				customFields // Pass custom fields
 			);
 
 			// Restore normal logging
@@ -135,7 +138,9 @@ export async function addSubtaskDirect(args, log) {
 				parentId,
 				null,
 				newSubtaskData,
-				generateFiles
+				generateFiles,
+				{}, // context
+				customFields // Pass custom fields
 			);
 
 			// Restore normal logging

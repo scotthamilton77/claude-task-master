@@ -18,7 +18,14 @@ import {
  */
 export async function listTasksDirect(args, log, context = {}) {
 	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot, customFieldFilters } = args;
+	const {
+		tasksJsonPath,
+		reportPath,
+		status,
+		withSubtasks,
+		projectRoot,
+		customFieldFilters
+	} = args;
 	const { session } = context;
 
 	if (!tasksJsonPath) {

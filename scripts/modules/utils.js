@@ -397,8 +397,12 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
 				// Create backward compatible result
-				const result = createBackwardCompatibleResult(tagData, resolvedTag, originalTaggedData);
-				
+				const result = createBackwardCompatibleResult(
+					tagData,
+					resolvedTag,
+					originalTaggedData
+				);
+
 				if (isDebug) {
 					console.log(
 						`Returning data for tag '${resolvedTag}' with ${tagData.tasks.length} tasks`

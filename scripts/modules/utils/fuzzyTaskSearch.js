@@ -14,14 +14,14 @@ const FIELD_WEIGHTS = {
 	description: 1.5,
 	details: 1.0,
 	dependencyTitles: 0.5,
-	
+
 	// Common custom fields (higher weights)
 	epic: 1.8,
 	component: 1.5,
 	taskType: 1.6,
 	assignee: 1.2,
 	sprint: 1.4,
-	
+
 	// Default weight for unknown custom fields
 	default: 1.0
 };
@@ -42,14 +42,16 @@ function getWeightForField(fieldName) {
  */
 function getCustomFieldNames(tasks) {
 	const fieldNames = new Set();
-	tasks.forEach(task => {
+	tasks.forEach((task) => {
 		if (task.customFields) {
-			Object.keys(task.customFields).forEach(field => fieldNames.add(field));
+			Object.keys(task.customFields).forEach((field) => fieldNames.add(field));
 		}
 		if (task.subtasks) {
-			task.subtasks.forEach(subtask => {
+			task.subtasks.forEach((subtask) => {
 				if (subtask.customFields) {
-					Object.keys(subtask.customFields).forEach(field => fieldNames.add(field));
+					Object.keys(subtask.customFields).forEach((field) =>
+						fieldNames.add(field)
+					);
 				}
 			});
 		}
@@ -66,18 +68,18 @@ function getCustomFieldNames(tasks) {
 function generateSearchKeys(tasks, searchType = 'default') {
 	const coreFields = ['title', 'description', 'details', 'dependencyTitles'];
 	const customFields = getCustomFieldNames(tasks);
-	
+
 	const keys = [
-		...coreFields.map(field => ({ 
-			name: field, 
-			weight: getWeightForField(field) 
+		...coreFields.map((field) => ({
+			name: field,
+			weight: getWeightForField(field)
 		})),
-		...customFields.map(field => ({ 
-			name: `customFields.${field}`, 
-			weight: getWeightForField(field) 
+		...customFields.map((field) => ({
+			name: `customFields.${field}`,
+			weight: getWeightForField(field)
 		}))
 	];
-	
+
 	return keys;
 }
 
@@ -136,10 +138,10 @@ export class FuzzyTaskSearch {
 		this.tasks = tasks;
 		this.config = SEARCH_CONFIGS[searchType] || SEARCH_CONFIGS.default;
 		this.searchableTasks = this._prepareSearchableTasks(tasks);
-		
+
 		// Generate dynamic search keys based on available custom fields
 		const searchKeys = generateSearchKeys(tasks, searchType);
-		
+
 		this.fuse = new Fuse(this.searchableTasks, {
 			includeScore: true,
 			threshold: this.config.threshold,
