@@ -20,6 +20,8 @@ import {
  * @param {string} [args.status] - Status for new subtask (default: 'pending')
  * @param {string} [args.dependencies] - Comma-separated list of dependency IDs
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
+ * @param {string} [args.projectRoot] - Project root directory
+ * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
@@ -35,6 +37,8 @@ export async function addSubtaskDirect(args, log) {
 		status,
 		dependencies: dependenciesStr,
 		skipGenerate,
+		projectRoot,
+		tag,
 		customFields = {}
 	} = args;
 	try {
@@ -106,7 +110,7 @@ export async function addSubtaskDirect(args, log) {
 				existingTaskId,
 				null,
 				generateFiles,
-				{}, // context
+				{ projectRoot, tag }, // context
 				customFields // Pass custom fields
 			);
 
@@ -139,7 +143,7 @@ export async function addSubtaskDirect(args, log) {
 				null,
 				newSubtaskData,
 				generateFiles,
-				{}, // context
+				{ projectRoot, tag }, // context
 				customFields // Pass custom fields
 			);
 

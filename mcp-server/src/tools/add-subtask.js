@@ -85,7 +85,8 @@ export function registerAddSubtaskTool(server) {
 					.optional()
 					.describe(
 						'Difficulty level (custom field example: easy, medium, hard)'
-					)
+					),
+				tag: z.string().optional().describe('Tag context to operate on')
 			})
 			.passthrough(), // Allow additional custom field parameters
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
@@ -117,7 +118,8 @@ export function registerAddSubtaskTool(server) {
 					'dependencies',
 					'file',
 					'skipGenerate',
-					'projectRoot'
+					'projectRoot',
+					'tag'
 				]);
 				const customFields = {};
 				Object.entries(args).forEach(([key, value]) => {
@@ -138,6 +140,7 @@ export function registerAddSubtaskTool(server) {
 						dependencies: args.dependencies,
 						skipGenerate: args.skipGenerate,
 						projectRoot: args.projectRoot,
+						tag: args.tag,
 						customFields: customFields
 					},
 					log,
