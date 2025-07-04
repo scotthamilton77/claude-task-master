@@ -30,9 +30,8 @@ class TaskMasterMCPServer {
 		this.server = new FastMCP(this.options);
 		this.initialized = false;
 
-		this.server.addResource({});
-
-		this.server.addResourceTemplate({});
+		//this.server.addResource({});	// FIXME this seems result in startup error noise
+		//this.server.addResourceTemplate({});	// FIXME this seems result in startup error noise
 
 		// Bind methods
 		this.init = this.init.bind(this);
