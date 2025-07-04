@@ -398,3 +398,4 @@ All implementation phases must follow a strict test-driven development (TDD) met
 ## Future / Next Enhancements
 
 - project-level custom field definitions to be enforced (e.g. prevent addition of custom fields to a task that aren't already pre-defined for the project)
+  - allow for these to be custom-weighted for the fuzzy search

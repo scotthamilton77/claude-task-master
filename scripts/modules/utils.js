@@ -15,6 +15,12 @@ import {
 	LEGACY_COMPLEXITY_REPORT_FILE,
 	LEGACY_CONFIG_FILE
 } from '../../src/constants/paths.js';
+import {
+	isLegacyFormat,
+	migrateLegacyFormatWithCustomFields,
+	createBackwardCompatibleResult,
+	createMasterFallbackResult
+} from './utils/backwardCompatibility.js';
 
 // Global silent mode flag
 let silentMode = false;
@@ -268,36 +274,13 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 	// Check if this is legacy format that needs migration
 	// Only migrate if we have tasks at the ROOT level AND no tag-like structure
-	if (
-		Array.isArray(data.tasks) &&
-		!data._rawTaggedData &&
-		!hasTaggedStructure(data)
-	) {
+	if (isLegacyFormat(data)) {
 		if (isDebug) {
 			console.log(`File is in legacy format, performing migration...`);
 		}
 
-		// This is legacy format - migrate it to tagged format
-		// First ensure all tasks have customFields for backward compatibility
-		const tasksWithCustomFields = data.tasks.map(task => ({
-			...task,
-			customFields: task.customFields || {},
-			subtasks: task.subtasks ? task.subtasks.map(subtask => ({
-				...subtask,
-				customFields: subtask.customFields || {}
-			})) : []
-		}));
-		
-		const migratedData = {
-			master: {
-				tasks: tasksWithCustomFields,
-				metadata: data.metadata || {
-					created: new Date().toISOString(),
-					updated: new Date().toISOString(),
-					description: 'Tasks for master context'
-				}
-			}
-		};
+		// This is legacy format - migrate it to tagged format with customFields support
+		const migratedData = migrateLegacyFormatWithCustomFields(data);
 
 		// Write the migrated data back to the file
 		try {
@@ -413,23 +396,9 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Get the data for the resolved tag
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
-				// Ensure backward compatibility by adding customFields to tasks/subtasks that don't have them
-				const tasksWithCustomFields = tagData.tasks.map(task => ({
-					...task,
-					customFields: task.customFields || {},
-					subtasks: task.subtasks ? task.subtasks.map(subtask => ({
-						...subtask,
-						customFields: subtask.customFields || {}
-					})) : (task.subtasks || [])
-				}));
+				// Create backward compatible result
+				const result = createBackwardCompatibleResult(tagData, resolvedTag, originalTaggedData);
 				
-				// Add the _rawTaggedData property and the resolved tag to the returned data
-				const result = {
-					...tagData,
-					tasks: tasksWithCustomFields,
-					tag: resolvedTag,
-					_rawTaggedData: originalTaggedData
-				};
 				if (isDebug) {
 					console.log(
 						`Returning data for tag '${resolvedTag}' with ${tagData.tasks.length} tasks`
@@ -440,27 +409,12 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				// If the resolved tag doesn't exist, fall back to master
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
-					// Ensure backward compatibility for master data too
-					const tasksWithCustomFields = masterData.tasks.map(task => ({
-						...task,
-						customFields: task.customFields || {},
-						subtasks: task.subtasks ? task.subtasks.map(subtask => ({
-							...subtask,
-							customFields: subtask.customFields || {}
-						})) : (task.subtasks || [])
-					}));
-					
 					if (isDebug) {
 						console.log(
 							`Tag '${resolvedTag}' not found, falling back to master with ${masterData.tasks.length} tasks`
 						);
 					}
-					return {
-						...masterData,
-						tasks: tasksWithCustomFields,
-						tag: 'master',
-						_rawTaggedData: originalTaggedData
-					};
+					return createMasterFallbackResult(masterData, originalTaggedData);
 				} else {
 					if (isDebug) {
 						console.log(`No valid tag data found, returning empty structure`);

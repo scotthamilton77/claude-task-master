@@ -1,19 +1,6 @@
-import path from 'path';
-import { z } from 'zod';
-
 import { log, readJSON, writeJSON } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
-import generateTaskFiles from './generate-task-files.js';
-
-// Define Zod schema for custom fields
-const CustomFieldsSchema = z.record(z.string()).optional().default({});
-
-// Reserved field names that cannot be used as custom fields
-const RESERVED_FIELD_NAMES = [
-	'id', 'title', 'description', 'details', 'testStrategy',
-	'status', 'priority', 'dependencies', 'subtasks', 'customFields',
-	'parentTaskId'
-];
+import { validateCustomFieldsWithLogging } from '../utils/customFieldsValidator.js';
 
 /**
  * Add a subtask to a parent task
@@ -38,31 +25,8 @@ async function addSubtask(
 	try {
 		log('info', `Adding subtask to parent task ${parentId}...`);
 
-		// Validate custom fields
-		const validatedCustomFields = CustomFieldsSchema.parse(customFields);
-		
-		// Check for reserved field names
-		const invalidFieldNames = Object.keys(validatedCustomFields).filter(name => 
-			RESERVED_FIELD_NAMES.includes(name)
-		);
-		
-		if (invalidFieldNames.length > 0) {
-			throw new Error(`Invalid custom field names (reserved): ${invalidFieldNames.join(', ')}`);
-		}
-		
-		// Validate field name format
-		const fieldNameRegex = /^[a-zA-Z_-][a-zA-Z0-9_-]*$/;
-		const invalidFormatNames = Object.keys(validatedCustomFields).filter(name => 
-			!fieldNameRegex.test(name)
-		);
-		
-		if (invalidFormatNames.length > 0) {
-			throw new Error(`Invalid custom field name format: ${invalidFormatNames.join(', ')}. Field names must start with a letter, underscore, or hyphen, and contain only letters, numbers, underscores, and hyphens.`);
-		}
-
-		if (Object.keys(validatedCustomFields).length > 0) {
-			log('info', `Custom fields: ${JSON.stringify(validatedCustomFields)}`);
-		}
+		// Validate custom fields using shared validator
+		const validatedCustomFields = validateCustomFieldsWithLogging(customFields, log);
 
 		// Read the existing tasks with proper context
 		const data = readJSON(tasksPath, context.projectRoot, context.tag);

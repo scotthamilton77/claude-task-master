@@ -1,4 +1,79 @@
-import { z } from 'zod';
+/**
+ * queryTranslator.js
+ * 
+ * Advanced query translation and filtering system for TaskMaster custom fields.
+ * This module provides the backbone for the hybrid query system that allows custom fields
+ * to be treated as first-class query parameters alongside core TaskMaster fields.
+ * 
+ * ## Purpose and Design
+ * 
+ * TaskMaster's query system needed to evolve from simple status-based filtering to support
+ * rich, multi-dimensional queries across both core fields and user-defined custom fields.
+ * This module solves several key challenges:
+ * 
+ * 1. **Hybrid Query Experience**: Users can query both core fields (`status`, `priority`) 
+ *    and custom fields (`epic`, `component`, `assignee`) using the same syntax
+ * 
+ * 2. **Dynamic Field Discovery**: The system automatically discovers available custom fields
+ *    from existing task data and makes them queryable without code changes
+ * 
+ * 3. **Intelligent Validation**: Provides field name validation, reserved word protection,
+ *    and helpful suggestions for typos or similar field names
+ * 
+ * 4. **Performance Optimization**: Efficient filtering algorithms that scale with task count
+ *    and number of custom fields
+ * 
+ * ## Key Features
+ * 
+ * - **First-Class Custom Fields**: Custom fields work exactly like core fields
+ *   - `get_tasks --epic EPIC-1234` (custom field)
+ *   - `get_tasks --status pending` (core field)
+ *   - `get_tasks --status pending --epic EPIC-1234` (mixed query)
+ * 
+ * - **Comma-Separated Values**: Support for multiple value selection
+ *   - `get_tasks --epic "EPIC-1234,EPIC-5678"`
+ *   - `get_tasks --status "pending,in-progress"`
+ * 
+ * - **Smart Validation**: Field name format validation and suggestions
+ *   - Prevents conflicts with reserved TaskMaster field names
+ *   - Suggests corrections for typos in field names
+ *   - Validates field name format (alphanumeric, underscores, hyphens)
+ * 
+ * ## Usage Patterns
+ * 
+ * ### Basic Custom Field Queries
+ * ```javascript
+ * const params = { epic: 'EPIC-1234', component: 'auth' };
+ * const filtered = queryTasks(tasks, params);
+ * ```
+ * 
+ * ### Mixed Core and Custom Field Queries  
+ * ```javascript
+ * const params = { status: 'pending', assignee: 'john.doe', priority: 'high' };
+ * const filtered = queryTasks(tasks, params);
+ * ```
+ * 
+ * ### Query Translation
+ * ```javascript
+ * const translated = translateQueryParameters({
+ *   status: 'pending',    // Core field
+ *   epic: 'EPIC-1234',    // Custom field
+ *   component: 'auth'     // Custom field
+ * });
+ * // Result: { coreFields: { status: 'pending' }, customFields: { epic: 'EPIC-1234', component: 'auth' } }
+ * ```
+ * 
+ * ## Integration Points
+ * 
+ * This module integrates with:
+ * - `list-tasks.js`: Extends task listing with custom field filtering
+ * - `get-tasks.js` (MCP): Enables custom fields in MCP tool queries
+ * - `fuzzyTaskSearch.js`: Powers custom field search and discovery
+ * 
+ * @fileoverview Advanced query translation and filtering for TaskMaster custom fields
+ * @author TaskMaster AI Enhancement
+ * @since 0.18.2
+ */
 
 // Core field names that are built into TaskMaster
 const CORE_FIELDS = [
@@ -140,9 +215,13 @@ function filterTasks(tasks, filters) {
 	Object.entries(filters.coreFields).forEach(([field, value]) => {
 		results = results.filter(task => {
 			if (field === 'status' && value.includes(',')) {
-				// Handle comma-separated status values
-				const statuses = value.split(',').map(s => s.trim());
-				return statuses.includes(task[field]);
+				// Handle comma-separated status values (case-insensitive)
+				const statuses = value.split(',').map(s => s.trim().toLowerCase());
+				return statuses.includes(task[field].toLowerCase());
+			}
+			// Handle single status values (case-insensitive for status field)
+			if (field === 'status') {
+				return task[field].toLowerCase() === value.toLowerCase();
 			}
 			return task[field] === value || (task[field] && task[field].toString().includes(value));
 		});
@@ -217,7 +296,7 @@ function validateQueryParameters(params, availableCustomFields) {
 	const warnings = [];
 	const suggestions = [];
 	
-	const { coreFields, customFields } = translateQueryParameters(params);
+	const { customFields } = translateQueryParameters(params);
 	
 	// Validate custom field names
 	Object.keys(customFields).forEach(fieldName => {

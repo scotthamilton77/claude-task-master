@@ -1,12 +1,9 @@
-import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
 import { z } from 'zod';
-import Fuse from 'fuse.js'; // Import Fuse.js for advanced fuzzy search
 
 import {
-	displayBanner,
 	getStatusWithColor,
 	startLoadingIndicator,
 	stopLoadingIndicator,
@@ -29,8 +26,7 @@ import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 
-// Define Zod schema for custom fields
-const CustomFieldsSchema = z.record(z.string()).optional().default({});
+import { validateCustomFieldsWithLogging } from '../utils/customFieldsValidator.js';
 
 // Define Zod schema for the expected AI output object
 const AiTaskDataSchema = z.object({
@@ -51,12 +47,6 @@ const AiTaskDataSchema = z.object({
 			'Array of task IDs that this task depends on (must be completed before this task can start)'
 		)
 });
-
-// Reserved field names that cannot be used as custom fields
-const RESERVED_FIELD_NAMES = [
-	'id', 'title', 'description', 'details', 'testStrategy',
-	'status', 'priority', 'dependencies', 'subtasks', 'customFields'
-];
 
 /**
  * Get all tasks from all tags
@@ -127,36 +117,14 @@ async function addTask(
 
 	const effectivePriority = priority || getDefaultPriority(projectRoot);
 
-	// Validate custom fields
-	const validatedCustomFields = CustomFieldsSchema.parse(customFields);
-	
-	// Check for reserved field names
-	const invalidFieldNames = Object.keys(validatedCustomFields).filter(name => 
-		RESERVED_FIELD_NAMES.includes(name)
-	);
-	
-	if (invalidFieldNames.length > 0) {
-		throw new Error(`Invalid custom field names (reserved): ${invalidFieldNames.join(', ')}`);
-	}
-	
-	// Validate field name format
-	const fieldNameRegex = /^[a-zA-Z_-][a-zA-Z0-9_-]*$/;
-	const invalidFormatNames = Object.keys(validatedCustomFields).filter(name => 
-		!fieldNameRegex.test(name)
-	);
-	
-	if (invalidFormatNames.length > 0) {
-		throw new Error(`Invalid custom field name format: ${invalidFormatNames.join(', ')}. Field names must start with a letter, underscore, or hyphen, and contain only letters, numbers, underscores, and hyphens.`);
-	}
+	// Validate custom fields using shared validator
+	const validatedCustomFields = validateCustomFieldsWithLogging(customFields, logFn);
 
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
 	);
 	if (tag) {
 		logFn.info(`Using tag context: ${tag}`);
-	}
-	if (Object.keys(validatedCustomFields).length > 0) {
-		logFn.info(`Custom fields: ${JSON.stringify(validatedCustomFields)}`);
 	}
 
 	let loadingIndicator = null;
@@ -370,7 +338,7 @@ async function addTask(
 		}
 
 		// Second pass: build a set of all related task IDs for flat analysis
-		for (const [taskId, depth] of depthMap.entries()) {
+		for (const [taskId] of depthMap.entries()) {
 			allRelatedTaskIds.add(taskId);
 		}
 
