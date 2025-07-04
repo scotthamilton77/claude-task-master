@@ -27,7 +27,11 @@ export function ensureSubtaskParentIds(tasks, logMigrations = false) {
 	let migrationsPerformed = 0;
 
 	const validatedTasks = tasks.map((task) => {
-		if (!task.subtasks || !Array.isArray(task.subtasks) || task.subtasks.length === 0) {
+		if (
+			!task.subtasks ||
+			!Array.isArray(task.subtasks) ||
+			task.subtasks.length === 0
+		) {
 			return task;
 		}
 
@@ -40,7 +44,7 @@ export function ensureSubtaskParentIds(tasks, logMigrations = false) {
 			// Check if parentTaskId is missing or invalid
 			if (!subtask.parentTaskId || subtask.parentTaskId !== task.id) {
 				migrationsPerformed++;
-				
+
 				if (logMigrations && process.env.TASKMASTER_DEBUG === 'true') {
 					console.log(
 						`[DEBUG] Auto-assigned parentTaskId ${task.id} to subtask ${task.id}.${subtask.id}`
@@ -92,7 +96,11 @@ export function validateSubtaskStructure(tasks, options = {}) {
 	let validatedTasks = tasks;
 
 	if (!Array.isArray(tasks)) {
-		return { tasks: validatedTasks, issues: ['Tasks must be an array'], isValid: false };
+		return {
+			tasks: validatedTasks,
+			issues: ['Tasks must be an array'],
+			isValid: false
+		};
 	}
 
 	// Step 1: Ensure parentTaskId fields exist
@@ -111,11 +119,15 @@ export function validateSubtaskStructure(tasks, options = {}) {
 		task.subtasks.forEach((subtask, subtaskIndex) => {
 			// Check for missing required fields
 			if (!subtask.id) {
-				issues.push(`Task ${task.id}: Subtask at index ${subtaskIndex} missing id`);
+				issues.push(
+					`Task ${task.id}: Subtask at index ${subtaskIndex} missing id`
+				);
 			}
 
 			if (!subtask.parentTaskId) {
-				issues.push(`Task ${task.id}: Subtask ${subtask.id} missing parentTaskId`);
+				issues.push(
+					`Task ${task.id}: Subtask ${subtask.id} missing parentTaskId`
+				);
 			} else if (subtask.parentTaskId !== task.id) {
 				issues.push(
 					`Task ${task.id}: Subtask ${subtask.id} has incorrect parentTaskId (${subtask.parentTaskId})`
@@ -196,7 +208,11 @@ export function createSubtaskIntegrityReport(tasks) {
 	let subtasksWithIssues = 0;
 
 	tasks.forEach((task) => {
-		if (task.subtasks && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
+		if (
+			task.subtasks &&
+			Array.isArray(task.subtasks) &&
+			task.subtasks.length > 0
+		) {
 			tasksWithSubtasks++;
 			totalSubtasks += task.subtasks.length;
 
@@ -215,9 +231,13 @@ export function createSubtaskIntegrityReport(tasks) {
 			totalSubtasks,
 			subtasksWithIssues,
 			orphanedSubtasks: orphanedSubtasks.length,
-			integrityScore: totalSubtasks > 0 ? 
-				((totalSubtasks - subtasksWithIssues) / totalSubtasks * 100).toFixed(1) + '%' : 
-				'100%'
+			integrityScore:
+				totalSubtasks > 0
+					? (
+							((totalSubtasks - subtasksWithIssues) / totalSubtasks) *
+							100
+						).toFixed(1) + '%'
+					: '100%'
 		},
 		issues: validation.issues,
 		orphanedSubtasks,

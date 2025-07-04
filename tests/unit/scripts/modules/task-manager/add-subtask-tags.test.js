@@ -20,15 +20,20 @@ const mockGenerateTextService = jest.fn().mockResolvedValue({
 	telemetryData: { model: 'test', tokensUsed: 100 }
 });
 
-jest.unstable_mockModule('../../../../../scripts/modules/ai-services-unified.js', () => ({
-	generateTextService: mockGenerateTextService,
-	streamTextService: jest.fn(),
-	generateObjectService: jest.fn(),
-	logAiUsage: jest.fn()
-}));
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/ai-services-unified.js',
+	() => ({
+		generateTextService: mockGenerateTextService,
+		streamTextService: jest.fn(),
+		generateObjectService: jest.fn(),
+		logAiUsage: jest.fn()
+	})
+);
 
 // Import after mocking
-const { default: addSubtask } = await import('../../../../../scripts/modules/task-manager/add-subtask.js');
+const { default: addSubtask } = await import(
+	'../../../../../scripts/modules/task-manager/add-subtask.js'
+);
 
 describe('add-subtask core function with multiple tags', () => {
 	let tempDir;
@@ -37,15 +42,18 @@ describe('add-subtask core function with multiple tags', () => {
 	beforeEach(async () => {
 		// Create a temporary directory for test files
 		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskmaster-test-'));
-		
+
 		// Create .taskmaster directory
 		const taskMasterDir = path.join(tempDir, '.taskmaster');
 		await fs.mkdir(taskMasterDir);
-		
+
 		// Create state.json with current tag
 		const statePath = path.join(taskMasterDir, 'state.json');
-		await fs.writeFile(statePath, JSON.stringify({ currentTag: 'master' }, null, 2));
-		
+		await fs.writeFile(
+			statePath,
+			JSON.stringify({ currentTag: 'master' }, null, 2)
+		);
+
 		tasksPath = path.join(tempDir, 'tasks.json');
 	});
 
@@ -184,10 +192,13 @@ describe('add-subtask core function with multiple tags', () => {
 
 		// Write the initial multi-tag file
 		await fs.writeFile(tasksPath, JSON.stringify(multiTagData, null, 2));
-		
+
 		// Update state.json to set current tag to feature
 		const statePath = path.join(tempDir, '.taskmaster', 'state.json');
-		await fs.writeFile(statePath, JSON.stringify({ currentTag: 'feature' }, null, 2));
+		await fs.writeFile(
+			statePath,
+			JSON.stringify({ currentTag: 'feature' }, null, 2)
+		);
 
 		// Add subtask to task 1 in feature tag using the core function directly
 		const newSubtaskData = {
@@ -220,7 +231,9 @@ describe('add-subtask core function with multiple tags', () => {
 
 		// Verify feature tag has the task with the new subtask
 		expect(resultData.feature.tasks[0].subtasks).toHaveLength(1);
-		expect(resultData.feature.tasks[0].subtasks[0].title).toBe('Feature subtask');
+		expect(resultData.feature.tasks[0].subtasks[0].title).toBe(
+			'Feature subtask'
+		);
 
 		// Verify master tag is unchanged
 		expect(resultData.master.tasks).toHaveLength(1);
