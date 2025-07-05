@@ -194,7 +194,9 @@ export function ensureCustomFieldsOnTasks(tasks) {
 	return tasks.map((task) => ({
 		...ensureCustomFields(task),
 		subtasks: task.subtasks
-			? task.subtasks.map(subtask => subtask ? ensureCustomFields(subtask) : subtask)
+			? task.subtasks.map((subtask) =>
+					subtask ? ensureCustomFields(subtask) : subtask
+				)
 			: task.subtasks || []
 	}));
 }

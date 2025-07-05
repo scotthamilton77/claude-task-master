@@ -28,10 +28,10 @@ import { ensureSubtaskParentIds } from './subtaskValidator.js';
 export function ensureTasksBackwardCompatibility(tasks) {
 	// Apply custom fields validation first
 	const withCustomFields = ensureCustomFieldsOnTasks(tasks);
-	
+
 	// Then ensure subtask parentTaskId integrity
 	const withValidSubtasks = ensureSubtaskParentIds(withCustomFields, true);
-	
+
 	return withValidSubtasks;
 }
 

@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.18.2-dev",
+	"version": "0.18.3-dev",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -24,7 +24,8 @@
 		"format-check": "biome format .",
 		"format": "biome format . --write",
 		"test:claude:errors": "node scripts/test-claude-errors.js",
-		"generate-completion": "node scripts/generate-completion.js",
+		"generate-bash-completion": "node scripts/generate-bash-completion.js",
+		"generate-zsh-completion": "node scripts/generate-zsh-completion.js",
 		"publish-local": "npm pack && npm install -g ./task-master-ai-*.tgz"
 	},
 	"keywords": [
@@ -71,6 +72,7 @@
 		"gradient-string": "^3.0.0",
 		"helmet": "^8.1.0",
 		"inquirer": "^12.5.0",
+		"jsonc-parser": "^3.3.1",
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",
@@ -80,7 +82,8 @@
 		"zod": "^3.23.8"
 	},
 	"optionalDependencies": {
-		"@anthropic-ai/claude-code": "^1.0.25"
+		"@anthropic-ai/claude-code": "^1.0.25",
+		"ai-sdk-provider-gemini-cli": "^0.0.3"
 	},
 	"engines": {
 		"node": ">=18.0.0"

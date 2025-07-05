@@ -1,6 +1,6 @@
 /**
  * backwardCompatibility.js integration tests
- * 
+ *
  * These tests focus on functional behavior rather than mocking internals
  * to avoid complex module mocking issues while still verifying functionality.
  */
@@ -12,9 +12,11 @@ describe('backwardCompatibility', () => {
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
-		
-		// Import modules 
-		backwardCompatibility = await import('../../../../../scripts/modules/utils/backwardCompatibility.js');
+
+		// Import modules
+		backwardCompatibility = await import(
+			'../../../../../scripts/modules/utils/backwardCompatibility.js'
+		);
 	});
 
 	describe('ensureTasksBackwardCompatibility', () => {
@@ -40,7 +42,7 @@ describe('backwardCompatibility', () => {
 
 		it('should handle empty arrays', () => {
 			const { ensureTasksBackwardCompatibility } = backwardCompatibility;
-			
+
 			const result = ensureTasksBackwardCompatibility([]);
 
 			expect(result).toEqual([]);
@@ -54,7 +56,7 @@ describe('backwardCompatibility', () => {
 			];
 
 			const result = ensureTasksBackwardCompatibility(tasks);
-			
+
 			// Both tasks should have customFields added
 			expect(result[0].customFields).toBeDefined();
 			expect(result[1].customFields).toBeDefined();
@@ -68,7 +70,11 @@ describe('backwardCompatibility', () => {
 					id: 5,
 					title: 'Task 5',
 					subtasks: [
-						{ id: 1, title: 'Subtask with wrong parentTaskId', parentTaskId: 999 }
+						{
+							id: 1,
+							title: 'Subtask with wrong parentTaskId',
+							parentTaskId: 999
+						}
 					]
 				}
 			];
@@ -87,9 +93,7 @@ describe('backwardCompatibility', () => {
 					{
 						id: 1,
 						title: 'Task 1',
-						subtasks: [
-							{ id: 1, title: 'Subtask 1.1' }
-						]
+						subtasks: [{ id: 1, title: 'Subtask 1.1' }]
 					}
 				],
 				metadata: {
@@ -129,9 +133,7 @@ describe('backwardCompatibility', () => {
 					{
 						id: 1,
 						title: 'Legacy Task',
-						subtasks: [
-							{ id: 1, title: 'Legacy Subtask' }
-						]
+						subtasks: [{ id: 1, title: 'Legacy Subtask' }]
 					}
 				]
 			};
@@ -142,7 +144,9 @@ describe('backwardCompatibility', () => {
 			expect(result.master.tasks[0].customFields).toBeDefined();
 			expect(result.master.tasks[0].subtasks[0].parentTaskId).toBe(1);
 			expect(result.master.metadata).toBeDefined();
-			expect(result.master.metadata.description).toBe('Tasks for master context');
+			expect(result.master.metadata.description).toBe(
+				'Tasks for master context'
+			);
 		});
 
 		it('should preserve existing metadata', () => {
@@ -241,7 +245,11 @@ describe('backwardCompatibility', () => {
 			const resolvedTag = 'dev';
 			const originalTaggedData = { master: {}, dev: tagData };
 
-			const result = createBackwardCompatibleResult(tagData, resolvedTag, originalTaggedData);
+			const result = createBackwardCompatibleResult(
+				tagData,
+				resolvedTag,
+				originalTaggedData
+			);
 
 			expect(result.tag).toBe('dev');
 			expect(result._rawTaggedData).toBe(originalTaggedData);

@@ -41,7 +41,7 @@ complete -F _task_master_completion tm
 complete -F _task_master_completion taskmaster
 `;
 
-	const outputPath = path.resolve(process.cwd(), 'task-master-completion.sh');
+	const outputPath = path.resolve(process.cwd(), 'scripts/task-master-completion.sh');
 	fs.writeFileSync(outputPath, script);
 	console.log(`Bash completion script generated at: ${outputPath}`);
 	console.log(`To use it, run: source ${outputPath}`);

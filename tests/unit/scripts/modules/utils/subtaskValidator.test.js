@@ -14,9 +14,11 @@ describe('subtaskValidator', () => {
 		// Reset environment before each test
 		jest.resetModules();
 		process.env = { ...originalEnv };
-		
+
 		// Import the module after environment setup
-		subtaskValidator = await import('../../../../../scripts/modules/utils/subtaskValidator.js');
+		subtaskValidator = await import(
+			'../../../../../scripts/modules/utils/subtaskValidator.js'
+		);
 	});
 
 	afterEach(() => {
@@ -88,7 +90,7 @@ describe('subtaskValidator', () => {
 		it('should log migrations when debug mode is enabled', () => {
 			const { ensureSubtaskParentIds } = subtaskValidator;
 			process.env.TASKMASTER_DEBUG = 'true';
-			
+
 			// Mock console.log to capture debug output
 			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -107,16 +109,22 @@ describe('subtaskValidator', () => {
 
 			expect(result[0].subtasks[0].parentTaskId).toBe(1);
 			expect(result[0].subtasks[1].parentTaskId).toBe(1);
-			
+
 			// Should log each migration
 			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('[DEBUG] Auto-assigned parentTaskId 1 to subtask 1.1')
+				expect.stringContaining(
+					'[DEBUG] Auto-assigned parentTaskId 1 to subtask 1.1'
+				)
 			);
 			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('[DEBUG] Auto-assigned parentTaskId 1 to subtask 1.2')
+				expect.stringContaining(
+					'[DEBUG] Auto-assigned parentTaskId 1 to subtask 1.2'
+				)
 			);
 			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('[DEBUG] Subtask validation: Auto-assigned parentTaskId to 2 subtasks')
+				expect.stringContaining(
+					'[DEBUG] Subtask validation: Auto-assigned parentTaskId to 2 subtasks'
+				)
 			);
 
 			consoleSpy.mockRestore();
@@ -125,7 +133,7 @@ describe('subtaskValidator', () => {
 		it('should not log when debug mode is disabled', () => {
 			const { ensureSubtaskParentIds } = subtaskValidator;
 			process.env.TASKMASTER_DEBUG = 'false';
-			
+
 			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
 			const tasks = [
@@ -191,7 +199,9 @@ describe('subtaskValidator', () => {
 			expect(result.isValid).toBe(false);
 			expect(result.issues).toContain('Task 1: Subtask 1 missing parentTaskId');
 			expect(result.issues).toContain('Task 1: Subtask at index 1 missing id');
-			expect(result.issues).toContain('Task 1: Subtask 2 has incorrect parentTaskId (999)');
+			expect(result.issues).toContain(
+				'Task 1: Subtask 2 has incorrect parentTaskId (999)'
+			);
 		});
 
 		it('should detect duplicate subtask IDs', () => {
@@ -261,7 +271,9 @@ describe('subtaskValidator', () => {
 			expect(orphaned[0].title).toBe('Orphaned Subtask');
 			expect(orphaned[0].actualParentId).toBe(2);
 			expect(orphaned[0].invalidParentId).toBe(999);
-			expect(orphaned[0].context).toContain('Found in task 2 but references non-existent parent 999');
+			expect(orphaned[0].context).toContain(
+				'Found in task 2 but references non-existent parent 999'
+			);
 		});
 
 		it('should return empty array when no orphaned subtasks exist', () => {
@@ -270,9 +282,7 @@ describe('subtaskValidator', () => {
 				{
 					id: 1,
 					title: 'Task 1',
-					subtasks: [
-						{ id: 1, title: 'Subtask 1.1', parentTaskId: 1 }
-					]
+					subtasks: [{ id: 1, title: 'Subtask 1.1', parentTaskId: 1 }]
 				}
 			];
 
@@ -311,7 +321,7 @@ describe('subtaskValidator', () => {
 			expect(report.summary.totalSubtasks).toBe(4);
 			expect(report.summary.subtasksWithIssues).toBe(2);
 			expect(report.summary.integrityScore).toBe('50.0%');
-			
+
 			expect(report.isHealthy).toBe(false);
 			expect(report.issues.length).toBeGreaterThan(0);
 		});
@@ -322,9 +332,7 @@ describe('subtaskValidator', () => {
 				{
 					id: 1,
 					title: 'Healthy Task',
-					subtasks: [
-						{ id: 1, title: 'Healthy Subtask', parentTaskId: 1 }
-					]
+					subtasks: [{ id: 1, title: 'Healthy Subtask', parentTaskId: 1 }]
 				}
 			];
 

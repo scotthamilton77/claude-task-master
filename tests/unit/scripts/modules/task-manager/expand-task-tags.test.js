@@ -28,15 +28,20 @@ const mockGenerateTextService = jest.fn().mockResolvedValue({
 	telemetryData: { model: 'test', tokensUsed: 100 }
 });
 
-jest.unstable_mockModule('../../../../../scripts/modules/ai-services-unified.js', () => ({
-	generateTextService: mockGenerateTextService,
-	streamTextService: jest.fn(),
-	generateObjectService: jest.fn(),
-	logAiUsage: jest.fn()
-}));
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/ai-services-unified.js',
+	() => ({
+		generateTextService: mockGenerateTextService,
+		streamTextService: jest.fn(),
+		generateObjectService: jest.fn(),
+		logAiUsage: jest.fn()
+	})
+);
 
 // Import after mocking
-const { default: expandTask } = await import('../../../../../scripts/modules/task-manager/expand-task.js');
+const { default: expandTask } = await import(
+	'../../../../../scripts/modules/task-manager/expand-task.js'
+);
 
 describe('expand-task with multiple tags', () => {
 	let tempDir;
@@ -46,15 +51,18 @@ describe('expand-task with multiple tags', () => {
 	beforeEach(async () => {
 		// Create a temporary directory for test files
 		tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'taskmaster-test-'));
-		
+
 		// Create .taskmaster directory
 		const taskMasterDir = path.join(tempDir, '.taskmaster');
 		await fs.mkdir(taskMasterDir);
-		
+
 		// Create state.json with current tag
 		const statePath = path.join(taskMasterDir, 'state.json');
-		await fs.writeFile(statePath, JSON.stringify({ currentTag: 'master' }, null, 2));
-		
+		await fs.writeFile(
+			statePath,
+			JSON.stringify({ currentTag: 'master' }, null, 2)
+		);
+
 		tasksPath = path.join(tempDir, 'tasks.json');
 
 		// Mock context with mcpLog
@@ -198,10 +206,13 @@ describe('expand-task with multiple tags', () => {
 
 		// Update context to use feature tag
 		mockContext.tag = 'feature';
-		
+
 		// Update state.json to set current tag to feature
 		const statePath = path.join(tempDir, '.taskmaster', 'state.json');
-		await fs.writeFile(statePath, JSON.stringify({ currentTag: 'feature' }, null, 2));
+		await fs.writeFile(
+			statePath,
+			JSON.stringify({ currentTag: 'feature' }, null, 2)
+		);
 
 		// Expand task 1 in feature tag
 		await expandTask(
