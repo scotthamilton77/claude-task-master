@@ -224,6 +224,7 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [context.projectRoot] - Project root path.
+ * @param {Object} [context.customFields] - Custom field values to update on the task.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
  * @param {boolean} [appendMode=false] - If true, append to details instead of full update.
  * @returns {Promise<Object|null>} - The updated task or null if update failed.
@@ -237,7 +238,13 @@ async function updateTaskById(
 	outputFormat = 'text',
 	appendMode = false
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag,
+		customFields
+	} = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -527,6 +534,18 @@ The changes described in the prompt should be thoughtfully applied to make the t
 					}
 				}
 
+				// Merge custom fields if provided (append mode)
+				if (customFields && Object.keys(customFields).length > 0) {
+					if (!taskToUpdate.customFields) {
+						taskToUpdate.customFields = {};
+					}
+					Object.assign(taskToUpdate.customFields, customFields);
+					report(
+						'info',
+						`Updated custom fields: ${Object.keys(customFields).join(', ')}`
+					);
+				}
+
 				// Write the updated task back to file
 				data.tasks[taskIndex] = taskToUpdate;
 				writeJSON(tasksPath, data, projectRoot, currentTag);
@@ -668,6 +687,18 @@ The changes described in the prompt should be thoughtfully applied to make the t
 				}
 			}
 			// --- End Task Validation/Correction ---
+
+			// --- Merge custom fields if provided (full update mode) ---
+			if (customFields && Object.keys(customFields).length > 0) {
+				if (!updatedTask.customFields) {
+					updatedTask.customFields = {};
+				}
+				Object.assign(updatedTask.customFields, customFields);
+				report(
+					'info',
+					`Updated custom fields: ${Object.keys(customFields).join(', ')}`
+				);
+			}
 
 			// --- Update Task Data (Keep existing) ---
 			data.tasks[taskIndex] = updatedTask;

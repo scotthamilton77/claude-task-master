@@ -778,6 +778,41 @@ function withNormalizedProjectRoot(executeFn) {
 	};
 }
 
+/**
+ * Higher-order function that handles custom field loading and parsing
+ * @param {Function} executeFn - The actual tool function to execute
+ * @returns {Function} - Wrapped function with custom fields handling
+ */
+function withCustomFields(executeFn) {
+	return async (args, context) => {
+		const { log } = context;
+		let customFields = {};
+
+		try {
+			// Dynamically import to avoid circular dependencies
+			const { customFieldsConfig } = await import(
+				'../../../scripts/modules/utils/customFieldsConfig.js'
+			);
+
+			// Load configuration and parse custom fields
+			customFieldsConfig.loadConfig(args.projectRoot);
+			customFields = customFieldsConfig.parseCustomFields(args);
+
+			if (Object.keys(customFields).length > 0) {
+				log.info(
+					`Extracted custom fields: ${Object.keys(customFields).join(', ')}`
+				);
+			}
+		} catch (error) {
+			log.warn(`Failed to process custom fields: ${error.message}`);
+			// Continue with empty custom fields if configuration fails
+		}
+
+		// Call the wrapped function with custom fields added to args
+		return executeFn({ ...args, customFields }, context);
+	};
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,
@@ -792,5 +827,6 @@ export {
 	createLogWrapper,
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	withCustomFields
 };

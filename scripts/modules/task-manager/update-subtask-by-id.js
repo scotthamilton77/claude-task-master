@@ -36,6 +36,7 @@ import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [context.projectRoot] - Project root path (needed for AI service key resolution).
+ * @param {Object} [context.customFields] - Custom field values to update on the subtask.
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). Automatically 'json' if mcpLog is present.
  * @returns {Promise<Object|null>} - The updated subtask or null if update failed.
  */
@@ -47,7 +48,13 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag,
+		customFields
+	} = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -330,6 +337,18 @@ Output Requirements:
 					);
 				}
 			}
+		}
+
+		// Merge custom fields if provided
+		if (customFields && Object.keys(customFields).length > 0) {
+			if (!updatedSubtask.customFields) {
+				updatedSubtask.customFields = {};
+			}
+			Object.assign(updatedSubtask.customFields, customFields);
+			report(
+				'info',
+				`Updated subtask custom fields: ${Object.keys(customFields).join(', ')}`
+			);
 		}
 
 		if (outputFormat === 'text' && getDebugFlag(session)) {

@@ -111,7 +111,8 @@ validCustomFields.forEach(field => {
 
 // Add ad-hoc syntax if enabled
 if (config.allowAdhoc) {
-  command.option('--custom <field:value>', 'Set custom field using field:value syntax (repeatable)', collect, []);
+  // Note: Actual implementation uses dynamic parsing of --custom:fieldname <value> format
+  // This is handled in the argument parsing logic rather than as a single option
 }
 ```
 
@@ -141,15 +142,20 @@ function parseCustomFields(args, config) {
     }
   });
   
-  // Extract ad-hoc fields if enabled
-  if (config.allowAdhoc && args.custom) {
-    args.custom.forEach(customArg => {
-      const [field, value] = customArg.split(':', 2);
-      if (config.blockList.includes(field)) {
-        throw new Error(`Field '${field}' is not allowed`);
+  // Extract ad-hoc fields if enabled (--custom:fieldname format)
+  if (config.allowAdhoc) {
+    for (const [key, value] of Object.entries(args)) {
+      if (key.startsWith('custom:')) {
+        const fieldName = key.substring(7); // Remove 'custom:' prefix
+        
+        // Check if field is blocked
+        if (config.blockList.includes(fieldName)) {
+          throw new Error(`Custom field '${fieldName}' is blocked by project configuration`);
+        }
+        
+        customFields[fieldName] = value;
       }
-      customFields[field] = value;
-    });
+    }
   }
   
   return customFields;
@@ -171,13 +177,45 @@ function generateCustomFieldHelp(config) {
   
   if (config.allowAdhoc) {
     help += '\nAd-hoc Custom Fields:\n';
-    help += '  --custom <field:value>    Set arbitrary custom field\n';
-    help += '                            Example: --custom priority-level:P1\n';
+    help += '  --custom:fieldname <value>    Set arbitrary custom field\n';
+    help += '                                Example: --custom:priority-level P1\n';
   }
   
   return help;
 }
 ```
+
+## Implementation Architecture
+
+### Higher-Order Function Pattern
+The system uses a `withCustomFields` HOF that wraps MCP tool functions:
+
+```javascript
+// In mcp-server/src/tools/utils.js
+function withCustomFields(executeFn) {
+  return async (args, context) => {
+    // Load configuration and parse custom fields
+    customFieldsConfig.loadConfig(args.projectRoot);
+    const customFields = customFieldsConfig.parseCustomFields(args);
+    
+    // Call wrapped function with custom fields added to args
+    return executeFn({ ...args, customFields }, context);
+  };
+}
+```
+
+### Configuration Service
+- **Singleton Pattern**: Single configuration instance per project
+- **Caching**: Configurations cached per project root for performance  
+- **Conflict Detection**: Automatic filtering of conflicting field names
+- **Dynamic Schema Generation**: Creates Zod schemas for MCP validation
+
+### Data Flow
+1. **Configuration Loading**: Configuration loaded per project root and cached
+2. **Conflict Resolution**: Field names validated against core parameters
+3. **Argument Parsing**: Custom fields extracted from CLI arguments or MCP parameters
+4. **Validation**: Fields validated against allow/block lists
+5. **Task Storage**: Custom fields stored in the `customFields` property of task objects
 
 ## Migration Strategy
 
@@ -227,14 +265,17 @@ function generateCustomFieldHelp(config) {
 4. **Clarity**: Clear distinction between project-defined and ad-hoc fields
 5. **Contextual Help**: CLI help shows only relevant fields for each project
 6. **Future-proof**: Configuration-driven approach supports evolving requirements
+7. **Project Isolation**: Each project can have its own custom field configuration
+8. **Configuration Caching**: Performance optimization through intelligent caching
+9. **Conflict Prevention**: Automatic detection and handling of core parameter conflicts
 
 ## Files to Modify
 
 ### Core Implementation
-- `scripts/modules/utils/customFieldsValidator.js` - Enhanced validation logic
-- `scripts/modules/commands.js` - Dynamic CLI generation  
-- `mcp-server/src/tools/*.js` - Dynamic MCP schema generation
-- `mcp-server/src/core/direct-functions/update-task-by-id.js` - Fix custom field handling
+- `scripts/modules/utils/customFieldsConfig.js` - Configuration loading and validation  
+- `mcp-server/src/tools/utils.js` - Higher-order function for custom fields integration
+- `mcp-server/src/tools/*.js` - All MCP tools updated with custom fields support
+- `mcp-server/src/core/direct-functions/*.js` - All direct functions updated for custom fields
 
 ### New Files
 - `scripts/modules/utils/customFieldsConfig.js` - Configuration loading and validation

@@ -14,20 +14,22 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
+ * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, projectRoot, and customFields.
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Subtask ID in format "parent.sub".
  * @param {string} args.prompt - Information to append to the subtask.
  * @param {boolean} [args.research] - Whether to use research role.
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {Object} [args.customFields] - Custom field values to update on the subtask.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
+	// Destructure expected args, including projectRoot and customFields
+	const { tasksJsonPath, id, prompt, research, projectRoot, customFields } =
+		args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -113,7 +115,8 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					session,
 					projectRoot,
 					commandName: 'update-subtask',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					customFields: customFields
 				},
 				'json'
 			);
