@@ -38,7 +38,11 @@ const CORE_PARAMETERS = [
 	'num',
 	'maxResults',
 	'withSubtasks',
-	'all'
+	'all',
+	'testStrategy',
+	'subtasks',
+	'customFields',
+	'parentTaskId'
 ];
 
 /**
@@ -337,6 +341,10 @@ class CustomFieldsConfig {
 	 */
 	clearCache() {
 		this.cache.clear();
+	}
+
+	kebabToCamel(str) {
+		return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
 	}
 }
 

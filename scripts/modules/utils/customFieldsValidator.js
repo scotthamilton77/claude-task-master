@@ -11,30 +11,13 @@
  */
 
 import { z } from 'zod';
+import { CORE_PARAMETERS } from './customFieldsConfig.js';
 
 /**
  * Zod schema for custom fields validation
  * Ensures all custom field values are strings and the object structure is valid
  */
 export const CustomFieldsSchema = z.record(z.string()).optional().default({});
-
-/**
- * Reserved field names that cannot be used as custom fields
- * These are core TaskMaster fields that must not be overridden
- */
-export const RESERVED_FIELD_NAMES = [
-	'id',
-	'title',
-	'description',
-	'details',
-	'testStrategy',
-	'status',
-	'priority',
-	'dependencies',
-	'subtasks',
-	'customFields',
-	'parentTaskId' // Additional reserved field for subtasks
-];
 
 /**
  * Regular expression for valid custom field names
@@ -77,7 +60,7 @@ export function validateCustomFieldNames(customFields) {
 
 	fieldNames.forEach((fieldName) => {
 		// Check for reserved field names
-		if (RESERVED_FIELD_NAMES.includes(fieldName)) {
+		if (CORE_PARAMETERS.includes(fieldName)) {
 			reservedErrors.push(fieldName);
 		}
 
