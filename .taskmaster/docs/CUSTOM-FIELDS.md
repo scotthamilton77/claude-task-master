@@ -164,6 +164,8 @@ function parseCustomFields(args, config) {
 
 ### 5. Help Text Generation
 
+NOTE: this section is out of date and needs to be updated to be run specifically in the context of a project where the project-level configuration can be loaded.
+
 ```javascript
 function generateCustomFieldHelp(config) {
   let help = '';
