@@ -103,6 +103,16 @@ describe('Custom Fields Update Integration', () => {
 						epic: 'EPIC-1234',
 						component: 'auth'
 					}
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					description: 'Description 2',
+					details: 'Details 2',
+					testStrategy: 'Test 2',
+					status: 'pending',
+					subtasks: [],
+					customFields: {}
 				}
 			]
 		};
@@ -176,6 +186,88 @@ describe('Custom Fields Update Integration', () => {
 				assignee: 'alice',
 				component: 'auth-module'
 			});
+		});
+
+		it('should unset a custom field on a subtask', async () => {
+			// TODO implement test
+		});
+	});
+
+	describe('Error Handling', () => {
+		it('should return an error if tasks.json does not exist', async () => {
+			// TODO implement test
+		});
+
+		it('should return an error for an invalid task ID', async () => {
+			// TODO implement test
+		});
+
+		it('should return an error for an invalid subtask ID', async () => {
+			// TODO implement test
+		});
+	});
+
+	describe('Validation', () => {
+		it('should return an error when setting a reserved custom field', async () => {
+			// TODO implement test
+			// Test setting core parameters like 'id', 'prompt', 'file', 'project-root'
+			// Should reject these fields even if they appear in allowList
+		});
+
+		it('should return an error when setting a custom field with an invalid name', async () => {
+			// TODO implement test
+			// Test invalid field names: empty strings, spaces, special characters
+			// Should validate field name format and reject invalid patterns
+		});
+
+		it('should reject fields that conflict with core parameters dynamically', async () => {
+			// TODO implement test
+			// Test dynamic detection of core parameters rather than hardcoded lists
+			// Should automatically detect new core parameters and prevent conflicts
+		});
+
+		it('should reject fields in the project blockList configuration', async () => {
+			// TODO implement test
+			// Test that fields in custom-fields.json blockList are rejected
+			// Should throw specific error messages for blocked fields
+		});
+
+		it('should validate field name length limits', async () => {
+			// TODO implement test
+			// Test extremely long field names and ensure reasonable limits
+			// Should handle edge cases gracefully
+		});
+
+		it('should reject field names with invalid characters', async () => {
+			// TODO implement test
+			// Test field names with special characters, unicode, etc.
+			// Should only allow valid identifier-like field names
+		});
+	});
+
+	describe('Prompt Bypass', () => {
+		it('should update custom fields without a prompt', async () => {
+			// TODO implement test
+			// Test direct custom field updates without going through AI prompt
+			// Should allow direct field manipulation for metadata updates
+		});
+
+		it('should update custom fields via direct API call', async () => {
+			// TODO implement test
+			// Test programmatic custom field updates via MCP tools
+			// Should bypass prompt requirements for direct field updates
+		});
+
+		it('should support bulk custom field updates without prompts', async () => {
+			// TODO implement test
+			// Test updating multiple custom fields at once without prompts
+			// Should handle batch operations efficiently
+		});
+	});
+
+	describe('Boundary Conditions', () => {
+		it('should handle a large number of custom fields', async () => {
+			// TODO implement test
 		});
 	});
 });

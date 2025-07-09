@@ -1,11 +1,16 @@
 /**
  * customFieldsConfig.js
- * Simplified custom fields configuration service
+ * Instance-based custom fields configuration service
+ * 
+ * This module provides a CustomFieldsConfig class that manages project-specific
+ * custom field configurations. Each instance operates independently with its own
+ * cache and configuration state.
  */
 
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
+import { CustomFieldsParser } from './customFieldsParser.js';
 
 /**
  * Core parameters that cannot be used as custom field names
@@ -46,11 +51,30 @@ const CORE_PARAMETERS = [
 ];
 
 /**
- * CustomFieldsConfig class for managing project-specific custom field configurations
+ * CustomFieldsConfig class for managing project-specific custom field configurations.
+ * 
+ * This class uses an instance-based approach where each instance maintains its own
+ * configuration state and cache. This design improves testability and prevents
+ * state sharing between different operations.
+ * 
+ * @example
+ * // For production use
+ * const config = new CustomFieldsConfig();
+ * config.loadConfig('/path/to/project');
+ * 
+ * @example
+ * // For testing with custom configuration
+ * const testConfig = { allowList: ['epic'], allowAdhoc: false };
+ * const config = new CustomFieldsConfig(testConfig);
  */
 class CustomFieldsConfig {
-	constructor() {
+	/**
+	 * Constructor
+	 * @param {Object|null} preloadedConfig - Optional pre-loaded configuration object for testing
+	 */
+	constructor(preloadedConfig = null) {
 		this.cache = new Map();
+		this.preloadedConfig = preloadedConfig;
 		this.defaultConfig = {
 			version: '1.0',
 			allowList: [],
@@ -61,7 +85,7 @@ class CustomFieldsConfig {
 	}
 
 	/**
-	 * Load configuration from custom-fields.json
+	 * Load configuration from custom-fields.json or use preloaded config
 	 * @param {string} projectRoot - Project root directory
 	 * @returns {Object} Configuration object
 	 */
@@ -84,26 +108,55 @@ class CustomFieldsConfig {
 		let config;
 
 		try {
-			if (fs.existsSync(configPath)) {
-				const configContent = fs.readFileSync(configPath, 'utf8');
-				const parsedConfig = JSON.parse(configContent);
-
+			// Use preloaded config if provided (for testing)
+			if (this.preloadedConfig) {
 				// Merge with defaults
-				config = { ...this.defaultConfig, ...parsedConfig };
-
-				console.log(
-					`[INFO] Loaded custom fields configuration from ${configPath}`
-				);
+				config = { ...this.defaultConfig, ...this.preloadedConfig };
+				console.log('[INFO] Using preloaded custom fields configuration');
 			} else {
-				// No config file - use defaults (no custom fields allowed)
-				config = { ...this.defaultConfig };
+				if (fs.existsSync(configPath)) {
+					const configContent = fs.readFileSync(configPath, 'utf8');
+					let parsedConfig;
+					
+					try {
+						parsedConfig = JSON.parse(configContent);
+					} catch (jsonError) {
+						throw new Error('Invalid JSON in custom-fields.json');
+					}
+
+					// Basic schema validation
+					if (typeof parsedConfig !== 'object' || parsedConfig === null) {
+						throw new Error('Invalid custom-fields.json schema');
+					}
+					
+					if (parsedConfig.allowList !== undefined && !Array.isArray(parsedConfig.allowList)) {
+						throw new Error('Invalid custom-fields.json schema');
+					}
+					
+					if (parsedConfig.blockList !== undefined && !Array.isArray(parsedConfig.blockList)) {
+						throw new Error('Invalid custom-fields.json schema');
+					}
+					
+					if (parsedConfig.allowAdhoc !== undefined && typeof parsedConfig.allowAdhoc !== 'boolean') {
+						throw new Error('Invalid custom-fields.json schema');
+					}
+
+					// Merge with defaults
+					config = { ...this.defaultConfig, ...parsedConfig };
+
+					console.log(
+						`[INFO] Loaded custom fields configuration from ${configPath}`
+					);
+				} else {
+					// No config file - use defaults (no custom fields allowed)
+					config = { ...this.defaultConfig };
+				}
 			}
 
-			// Validate allow-list for conflicts
+			// Validate allow-list for conflicts (but don't modify the original list)
 			const { validFields, conflictingFields } = this.validateAllowList(
 				config.allowList
 			);
-			config.allowList = validFields;
 
 			if (conflictingFields.length > 0) {
 				console.log(
@@ -162,7 +215,11 @@ class CustomFieldsConfig {
 	 * @param {string[]} coreParameters - Array of core parameter names
 	 * @returns {Object} Object with validFields and conflictingFields arrays
 	 */
-	validateAllowList(allowList = [], coreParameters = CORE_PARAMETERS) {
+	validateAllowList(allowList = [], coreParameters = null) {
+		// Use instance core parameters if not provided
+		if (!coreParameters) {
+			coreParameters = this.coreParameters || CORE_PARAMETERS;
+		}
 		const validFields = [];
 		const conflictingFields = [];
 
@@ -172,7 +229,12 @@ class CustomFieldsConfig {
 		}
 
 		for (const field of allowList) {
-			if (coreParameters.includes(field)) {
+			// Check for direct conflicts
+			if (coreParameters && coreParameters.includes(field)) {
+				conflictingFields.push(field);
+			} 
+			// Check for kebab-case to camelCase conflicts
+			else if (coreParameters && coreParameters.includes(this.kebabToCamel(field))) {
 				conflictingFields.push(field);
 			} else {
 				validFields.push(field);
@@ -188,7 +250,11 @@ class CustomFieldsConfig {
 	 * @param {string[]} coreParameters - Array of core parameter names
 	 * @returns {Object} Object with validFields and conflictingFields arrays
 	 */
-	validateBlockList(blockList = [], coreParameters = CORE_PARAMETERS) {
+	validateBlockList(blockList = [], coreParameters = null) {
+		// Use instance core parameters if not provided
+		if (!coreParameters) {
+			coreParameters = this.coreParameters || CORE_PARAMETERS;
+		}
 		const validFields = [];
 		const conflictingFields = [];
 
@@ -198,7 +264,7 @@ class CustomFieldsConfig {
 		}
 
 		for (const field of blockList) {
-			if (coreParameters.includes(field)) {
+			if (coreParameters && coreParameters.includes(field)) {
 				conflictingFields.push(field);
 			} else {
 				validFields.push(field);
@@ -209,54 +275,22 @@ class CustomFieldsConfig {
 	}
 
 	/**
-	 * Parse custom fields from command arguments
+	 * Create a parser instance for this configuration
+	 * @returns {CustomFieldsParser} Parser instance
+	 */
+	createParser() {
+		return new CustomFieldsParser(this);
+	}
+
+	/**
+	 * Parse custom fields from command arguments (backward compatibility method)
 	 * @param {Object} args - Command arguments object
 	 * @returns {Object} Extracted custom fields object
+	 * @deprecated Use createParser().parseCustomFields() instead
 	 */
 	parseCustomFields(args) {
-		if (!args || typeof args !== 'object') {
-			return {};
-		}
-
-		// Get current project's configuration (must be loaded first)
-		const config = this.getCurrentConfig();
-		if (!config) {
-			return {};
-		}
-
-		const customFields = {};
-
-		// Extract allow-listed fields directly from args
-		for (const field of config.allowList) {
-			if (args[field] !== undefined) {
-				customFields[field] = args[field];
-			}
-		}
-
-		// Extract ad-hoc fields if enabled (--custom:fieldname format)
-		if (config.allowAdhoc) {
-			for (const [key, value] of Object.entries(args)) {
-				if (key.startsWith('custom:')) {
-					const fieldName = key.substring(7); // Remove 'custom:' prefix
-
-					// Skip empty field names
-					if (!fieldName || fieldName.trim() === '') {
-						continue;
-					}
-
-					// Check if field is blocked
-					if (config.blockList.includes(fieldName)) {
-						throw new Error(
-							`Custom field '${fieldName}' is blocked by project configuration`
-						);
-					}
-
-					customFields[fieldName] = value;
-				}
-			}
-		}
-
-		return customFields;
+		const parser = this.createParser();
+		return parser.parseCustomFields(args);
 	}
 
 	/**
@@ -276,7 +310,10 @@ class CustomFieldsConfig {
 	getValidCustomFields() {
 		const config = this.getCurrentConfig();
 		if (!config) return [];
-		return config.allowList || [];
+		
+		// Filter out conflicts with core parameters
+		const { validFields } = this.validateAllowList(config.allowList || []);
+		return validFields;
 	}
 
 	/**
@@ -337,18 +374,29 @@ class CustomFieldsConfig {
 	}
 
 	/**
+	 * Check if a field name is allowed as a custom field (alias for isFieldAllowed)
+	 * @param {string} fieldName - Field name to check
+	 * @returns {boolean} True if field is allowed
+	 */
+	isAllowed(fieldName) {
+		return this.isFieldAllowed(fieldName);
+	}
+
+	/**
 	 * Clear configuration cache
 	 */
 	clearCache() {
 		this.cache.clear();
 	}
 
+	/**
+	 * Convert kebab-case to camelCase (helper method)
+	 * @param {string} str - String to convert
+	 * @returns {string} Converted string
+	 */
 	kebabToCamel(str) {
 		return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
 	}
 }
 
-// Export singleton instance
-const customFieldsConfig = new CustomFieldsConfig();
-
-export { CORE_PARAMETERS, CustomFieldsConfig, customFieldsConfig };
+export { CORE_PARAMETERS, CustomFieldsConfig };

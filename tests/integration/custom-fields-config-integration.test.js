@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { CustomFieldsConfig } from '../../scripts/modules/utils/customFieldsConfig.js';
+import { CustomFieldsParser } from '../../scripts/modules/utils/customFieldsParser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +34,7 @@ describe('CustomFieldsConfig Integration Tests', () => {
 		customFieldsConfig.clearCache();
 	});
 
-	describe('Configuration loading', () => {
+	describe('Configuration loading with file system', () => {
 		it('should load valid configuration from file', () => {
 			const mockConfig = {
 				version: '1.0',
@@ -107,6 +108,45 @@ describe('CustomFieldsConfig Integration Tests', () => {
 		});
 	});
 
+	describe('Constructor injection vs file system', () => {
+		it('should prioritize preloaded config over file system', () => {
+			// Write config to file system
+			const fileConfig = {
+				allowList: ['from-file'],
+				allowAdhoc: false
+			};
+			fs.writeFileSync(testConfigPath, JSON.stringify(fileConfig));
+
+			// Create instance with preloaded config
+			const preloadedConfig = {
+				allowList: ['from-constructor'],
+				allowAdhoc: true
+			};
+			const configWithPreload = new CustomFieldsConfig(preloadedConfig);
+
+			// Load config - should use preloaded, not file
+			const config = configWithPreload.loadConfig(testProjectRoot);
+
+			expect(config.allowList).toEqual(['from-constructor']);
+			expect(config.allowAdhoc).toBe(true);
+			expect(configWithPreload.getValidCustomFields()).toEqual(['from-constructor']);
+		});
+
+		it('should fall back to file system when no preloaded config', () => {
+			const fileConfig = {
+				allowList: ['from-file'],
+				allowAdhoc: true
+			};
+			fs.writeFileSync(testConfigPath, JSON.stringify(fileConfig));
+
+			// Create instance without preloaded config
+			const config = customFieldsConfig.loadConfig(testProjectRoot);
+
+			expect(config.allowList).toEqual(['from-file']);
+			expect(config.allowAdhoc).toBe(true);
+		});
+	});
+
 	describe('Conflict detection and validation', () => {
 		beforeEach(() => {
 			const configWithConflicts = {
@@ -139,7 +179,7 @@ describe('CustomFieldsConfig Integration Tests', () => {
 		});
 	});
 
-	describe('Custom field parsing', () => {
+	describe('Custom field parsing with file-based config', () => {
 		beforeEach(() => {
 			const config = {
 				allowList: ['epic', 'component', 'assignee'],
@@ -151,7 +191,8 @@ describe('CustomFieldsConfig Integration Tests', () => {
 			customFieldsConfig.loadConfig(testProjectRoot);
 		});
 
-		it('should extract allow-listed fields', () => {
+		it('should extract allow-listed fields using parser', () => {
+			const parser = customFieldsConfig.createParser();
 			const args = {
 				id: '123',
 				prompt: 'test',
@@ -161,7 +202,7 @@ describe('CustomFieldsConfig Integration Tests', () => {
 				unknownField: 'ignored'
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
+			const customFields = parser.parseCustomFields(args);
 
 			expect(customFields).toEqual({
 				epic: 'EPIC-123',
@@ -170,13 +211,31 @@ describe('CustomFieldsConfig Integration Tests', () => {
 			});
 		});
 
-		it('should handle ad-hoc fields when enabled', () => {
+		it('should handle ad-hoc fields when enabled using parser', () => {
+			const parser = customFieldsConfig.createParser();
 			const args = {
 				epic: 'EPIC-123',
 				custom: ['priority-level:P1', 'review-board:architecture']
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
+			const customFields = parser.parseCustomFields(args);
+
+			expect(customFields).toEqual({
+				epic: 'EPIC-123',
+				'priority-level': 'P1',
+				'review-board': 'architecture'
+			});
+		});
+
+		it('should handle custom: prefix fields using parser', () => {
+			const parser = customFieldsConfig.createParser();
+			const args = {
+				epic: 'EPIC-123',
+				'custom:priority-level': 'P1',
+				'custom:review-board': 'architecture'
+			};
+
+			const customFields = parser.parseCustomFields(args);
 
 			expect(customFields).toEqual({
 				epic: 'EPIC-123',
@@ -186,11 +245,12 @@ describe('CustomFieldsConfig Integration Tests', () => {
 		});
 
 		it('should handle values with colons in ad-hoc fields', () => {
+			const parser = customFieldsConfig.createParser();
 			const args = {
 				custom: ['url:https://example.com:8080']
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
+			const customFields = parser.parseCustomFields(args);
 
 			expect(customFields).toEqual({
 				url: 'https://example.com:8080'
@@ -198,11 +258,12 @@ describe('CustomFieldsConfig Integration Tests', () => {
 		});
 
 		it('should throw error for block-listed fields', () => {
+			const parser = customFieldsConfig.createParser();
 			const args = {
 				custom: ['password:12345']
 			};
 
-			expect(() => customFieldsConfig.parseCustomFields(args)).toThrow(
+			expect(() => parser.parseCustomFields(args)).toThrow(
 				"Field 'password' is not allowed"
 			);
 		});
@@ -235,9 +296,45 @@ describe('CustomFieldsConfig Integration Tests', () => {
 			const thirdLoad = customFieldsConfig.loadConfig(testProjectRoot);
 			expect(thirdLoad.allowList).toEqual(['component']); // Now updated
 		});
+
+		it('should cache different configs for different project roots', () => {
+			// Create second test directory
+			const testProjectRoot2 = path.join(__dirname, '../fixtures/test-project2');
+			const testConfigPath2 = path.join(
+				testProjectRoot2,
+				'.taskmaster',
+				'custom-fields.json'
+			);
+			fs.mkdirSync(path.dirname(testConfigPath2), { recursive: true });
+
+			try {
+				// Write different configs
+				fs.writeFileSync(testConfigPath, JSON.stringify({ allowList: ['epic'] }));
+				fs.writeFileSync(testConfigPath2, JSON.stringify({ allowList: ['component'] }));
+
+				// Load both configs
+				const config1 = customFieldsConfig.loadConfig(testProjectRoot);
+				const config2 = customFieldsConfig.loadConfig(testProjectRoot2);
+
+				expect(config1.allowList).toEqual(['epic']);
+				expect(config2.allowList).toEqual(['component']);
+
+				// Both should be cached
+				expect(customFieldsConfig.cache.size).toBe(2);
+
+			} finally {
+				// Clean up second test directory
+				if (fs.existsSync(testConfigPath2)) {
+					fs.unlinkSync(testConfigPath2);
+				}
+				if (fs.existsSync(path.dirname(testConfigPath2))) {
+					fs.rmdirSync(path.dirname(testConfigPath2), { recursive: true });
+				}
+			}
+		});
 	});
 
-	describe('Helper methods', () => {
+	describe('Helper methods with file-based config', () => {
 		beforeEach(() => {
 			const config = {
 				allowList: ['epic', 'component'],
@@ -266,9 +363,49 @@ describe('CustomFieldsConfig Integration Tests', () => {
 		});
 	});
 
-	describe('Integration workflow', () => {
-		it('should handle full configuration workflow', () => {
-			// Step 1: Load config
+	describe('Mixed constructor injection and file system workflow', () => {
+		it('should handle full configuration workflow with constructor injection', () => {
+			// Test with preloaded config (no file system)
+			const mockConfig = {
+				version: '1.0',
+				allowList: ['epic', 'component', 'assignee'],
+				allowAdhoc: true,
+				blockList: ['password', 'token']
+			};
+
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			const config = configWithPreload.loadConfig('/any/path'); // Path doesn't matter with preload
+
+			expect(config).toEqual(mockConfig);
+
+			// Get valid fields (should filter conflicts automatically)
+			const validFields = configWithPreload.getValidCustomFields();
+			expect(validFields).toEqual(['epic', 'component', 'assignee']);
+
+			// Parse fields using the parser
+			const parser = configWithPreload.createParser();
+			const args = {
+				epic: 'EPIC-123',
+				component: 'auth',
+				custom: ['priority-level:P1']
+			};
+
+			const customFields = parser.parseCustomFields(args);
+
+			expect(customFields).toEqual({
+				epic: 'EPIC-123',
+				component: 'auth',
+				'priority-level': 'P1'
+			});
+
+			// Check field permissions
+			expect(configWithPreload.isAllowed('epic')).toBe(true);
+			expect(configWithPreload.isAllowed('custom-field')).toBe(true); // ad-hoc enabled
+			expect(configWithPreload.isAllowed('password')).toBe(false); // blocked
+		});
+
+		it('should handle full configuration workflow with file system', () => {
+			// Test with file system config
 			const mockConfig = {
 				version: '1.0',
 				allowList: ['epic', 'component', 'assignee'],
@@ -282,18 +419,19 @@ describe('CustomFieldsConfig Integration Tests', () => {
 
 			expect(config).toEqual(mockConfig);
 
-			// Step 2: Get valid fields (should filter conflicts)
+			// Get valid fields (should filter conflicts automatically)
 			const validFields = customFieldsConfig.getValidCustomFields();
 			expect(validFields).toEqual(['epic', 'component', 'assignee']);
 
-			// Step 3: Parse fields from CLI args
+			// Parse fields using the parser
+			const parser = customFieldsConfig.createParser();
 			const args = {
 				epic: 'EPIC-123',
 				component: 'auth',
 				custom: ['priority-level:P1']
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
+			const customFields = parser.parseCustomFields(args);
 
 			expect(customFields).toEqual({
 				epic: 'EPIC-123',
@@ -301,10 +439,61 @@ describe('CustomFieldsConfig Integration Tests', () => {
 				'priority-level': 'P1'
 			});
 
-			// Step 4: Check field permissions
+			// Check field permissions
 			expect(customFieldsConfig.isAllowed('epic')).toBe(true);
 			expect(customFieldsConfig.isAllowed('custom-field')).toBe(true);
 			expect(customFieldsConfig.isAllowed('password')).toBe(false);
+		});
+
+		it('should work with different instances for different test scenarios', () => {
+			// Test isolation between instances
+			const config1 = new CustomFieldsConfig({ allowList: ['epic'] });
+			const config2 = new CustomFieldsConfig({ allowList: ['component'] });
+
+			config1.loadConfig('/path1');
+			config2.loadConfig('/path2');
+
+			expect(config1.getValidCustomFields()).toEqual(['epic']);
+			expect(config2.getValidCustomFields()).toEqual(['component']);
+
+			// They should be independent
+			expect(config1.getCurrentConfig().allowList).toEqual(['epic']);
+			expect(config2.getCurrentConfig().allowList).toEqual(['component']);
+		});
+	});
+
+	describe('Parser integration with different configs', () => {
+		it('should work with parser created from file-based config', () => {
+			const fileConfig = {
+				allowList: ['epic'],
+				allowAdhoc: false
+			};
+			fs.writeFileSync(testConfigPath, JSON.stringify(fileConfig));
+			customFieldsConfig.loadConfig(testProjectRoot);
+
+			const parser = customFieldsConfig.createParser();
+			const args = { epic: 'EPIC-123', custom: ['ignored:value'] };
+			const customFields = parser.parseCustomFields(args);
+
+			expect(customFields).toEqual({ epic: 'EPIC-123' }); // custom ignored due to allowAdhoc: false
+		});
+
+		it('should work with parser created from constructor-injected config', () => {
+			const injectedConfig = {
+				allowList: ['component'],
+				allowAdhoc: true
+			};
+			const configWithPreload = new CustomFieldsConfig(injectedConfig);
+			configWithPreload.loadConfig('/any/path');
+
+			const parser = configWithPreload.createParser();
+			const args = { component: 'auth', custom: ['priority:high'] };
+			const customFields = parser.parseCustomFields(args);
+
+			expect(customFields).toEqual({ 
+				component: 'auth',
+				priority: 'high'
+			}); // custom processed due to allowAdhoc: true
 		});
 	});
 });

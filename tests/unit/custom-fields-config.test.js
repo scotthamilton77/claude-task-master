@@ -1,198 +1,30 @@
-import {
-	describe,
-	it,
-	expect,
-	jest,
-	beforeEach,
-	afterEach
-} from '@jest/globals';
-import path from 'path';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { z } from 'zod';
 
-// Mock fs module
-jest.mock('fs');
-
-import fs from 'fs';
-
-// This will be the actual implementation location
-// import { CustomFieldsConfig } from '../../scripts/modules/utils/customFieldsConfig.js';
-
-// Mock implementation for testing
-class CustomFieldsConfig {
-	constructor() {
-		this.config = null;
-		this.projectRoot = null;
-	}
-
-	loadConfig(projectRoot) {
-		this.projectRoot = projectRoot;
-		const configPath = path.join(
-			projectRoot,
-			'.taskmaster',
-			'custom-fields.json'
-		);
-
-		if (!fs.existsSync(configPath)) {
-			// Default behavior: no custom fields without config
-			this.config = {
-				version: '1.0',
-				allowList: [],
-				allowAdhoc: false,
-				blockList: [],
-				description: ''
-			};
-			return this.config;
-		}
-
-		try {
-			const rawConfig = fs.readFileSync(configPath, 'utf-8');
-			const parsedConfig = JSON.parse(rawConfig);
-
-			// Validate schema
-			const configSchema = z.object({
-				version: z.string().default('1.0'),
-				allowList: z.array(z.string()).default([]),
-				allowAdhoc: z.boolean().default(false),
-				blockList: z.array(z.string()).default([]),
-				description: z.string().optional().default('')
-			});
-
-			this.config = configSchema.parse(parsedConfig);
-			return this.config;
-		} catch (error) {
-			throw new Error(
-				`Failed to load custom fields configuration: ${error.message}`
-			);
-		}
-	}
-
-	validateAllowList(allowList, coreParameters) {
-		const conflicts = allowList.filter(
-			(field) =>
-				coreParameters.has(field) ||
-				coreParameters.has(this.kebabToCamel(field))
-		);
-
-		if (conflicts.length > 0) {
-			console.warn(
-				`⚠️  Custom fields conflict with core parameters: ${conflicts.join(', ')}`
-			);
-			console.warn(
-				`   These fields will only be accessible via --custom:* syntax`
-			);
-			// TODO: Make this validation dynamic and future-proof
-			return allowList.filter((field) => !conflicts.includes(field));
-		}
-		return allowList;
-	}
-
-	generateCliOptions(command, validCustomFields) {
-		// Add allow-listed fields as native options
-		validCustomFields.forEach((field) => {
-			command.option(`--${field} <value>`, `Set ${field} custom field`);
-		});
-
-		// Add ad-hoc syntax if enabled
-		if (this.config && this.config.allowAdhoc) {
-			command.option(
-				'--custom <field:value>',
-				'Set custom field using field:value syntax (repeatable)',
-				this.collect,
-				[]
-			);
-		}
-	}
-
-	generateMcpSchema(baseSchema, validCustomFields) {
-		// Add allow-listed fields to Zod schema
-		const customFieldSchema = {};
-		validCustomFields.forEach((field) => {
-			customFieldSchema[field] = z
-				.string()
-				.optional()
-				.describe(`${field} custom field`);
-		});
-
-		// Extend base schema
-		return baseSchema.extend(customFieldSchema).passthrough();
-	}
-
-	parseCustomFields(args) {
-		const customFields = {};
-
-		if (!this.config) {
-			return customFields;
-		}
-
-		// Extract allow-listed fields
-		this.config.allowList.forEach((field) => {
-			if (args[field] !== undefined) {
-				customFields[field] = args[field];
-			}
-		});
-
-		// Extract ad-hoc fields if enabled
-		if (this.config.allowAdhoc && args.custom) {
-			const customArgs = Array.isArray(args.custom)
-				? args.custom
-				: [args.custom];
-			customArgs.forEach((customArg) => {
-				const [field, ...valueParts] = customArg.split(':');
-				const value = valueParts.join(':'); // Handle values with colons
-
-				if (this.config.blockList.includes(field)) {
-					throw new Error(`Field '${field}' is not allowed`);
-				}
-				customFields[field] = value;
-			});
-		}
-
-		return customFields;
-	}
-
-	isAllowed(fieldName) {
-		if (!this.config) return false;
-
-		// Check block list first
-		if (this.config.blockList.includes(fieldName)) {
-			return false;
-		}
-
-		// Check allow list
-		if (this.config.allowList.includes(fieldName)) {
-			return true;
-		}
-
-		// Check ad-hoc if enabled
-		return this.config.allowAdhoc;
-	}
-
-	kebabToCamel(str) {
-		return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-	}
-
-	collect(value, previous) {
-		return previous.concat([value]);
-	}
-}
+// Import the actual implementation for testing
+import { 
+	CustomFieldsConfig, 
+	CORE_PARAMETERS 
+} from '../../scripts/modules/utils/customFieldsConfig.js';
+import { CustomFieldsParser } from '../../scripts/modules/utils/customFieldsParser.js';
 
 describe('CustomFieldsConfig', () => {
 	let customFieldsConfig;
 	const mockProjectRoot = '/test/project';
-	const configPath = '/test/project/.taskmaster/custom-fields.json';
 
 	beforeEach(() => {
+		// Create clean instance for each test
 		customFieldsConfig = new CustomFieldsConfig();
 		jest.clearAllMocks();
-		jest.spyOn(console, 'warn').mockImplementation();
+		jest.spyOn(console, 'log').mockImplementation();
 	});
 
 	afterEach(() => {
 		jest.restoreAllMocks();
 	});
 
-	describe('loadConfig', () => {
-		it('should load valid configuration from file', () => {
+	describe('Constructor injection and preloaded config', () => {
+		it('should use preloaded config when provided', () => {
 			const mockConfig = {
 				version: '1.0',
 				allowList: ['epic', 'component', 'assignee'],
@@ -201,20 +33,16 @@ describe('CustomFieldsConfig', () => {
 				description: 'Test configuration'
 			};
 
-			fs.existsSync.mockReturnValue(true);
-			fs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
+			// Create instance with preloaded config
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			const config = configWithPreload.loadConfig(mockProjectRoot);
 
-			const config = customFieldsConfig.loadConfig(mockProjectRoot);
-
-			expect(fs.existsSync).toHaveBeenCalledWith(configPath);
-			expect(fs.readFileSync).toHaveBeenCalledWith(configPath, 'utf-8');
 			expect(config).toEqual(mockConfig);
 		});
 
-		it('should return default config when file does not exist', () => {
-			fs.existsSync.mockReturnValue(false);
-
-			const config = customFieldsConfig.loadConfig(mockProjectRoot);
+		it('should return default config when no preloaded config and no file', () => {
+			// Test with non-existent project root (no file system access)
+			const config = customFieldsConfig.loadConfig('/non/existent/path');
 
 			expect(config).toEqual({
 				version: '1.0',
@@ -225,15 +53,14 @@ describe('CustomFieldsConfig', () => {
 			});
 		});
 
-		it('should apply defaults for missing properties', () => {
+		it('should merge preloaded config with defaults for missing properties', () => {
 			const partialConfig = {
 				allowList: ['epic']
 			};
 
-			fs.existsSync.mockReturnValue(true);
-			fs.readFileSync.mockReturnValue(JSON.stringify(partialConfig));
-
-			const config = customFieldsConfig.loadConfig(mockProjectRoot);
+			// Create instance with partial preloaded config
+			const configWithPreload = new CustomFieldsConfig(partialConfig);
+			const config = configWithPreload.loadConfig(mockProjectRoot);
 
 			expect(config).toEqual({
 				version: '1.0',
@@ -244,158 +71,202 @@ describe('CustomFieldsConfig', () => {
 			});
 		});
 
-		it('should throw error for invalid JSON', () => {
-			fs.existsSync.mockReturnValue(true);
-			fs.readFileSync.mockReturnValue('invalid json');
-
-			expect(() => customFieldsConfig.loadConfig(mockProjectRoot)).toThrow(
-				'Failed to load custom fields configuration'
+		it('should throw error for invalid projectRoot parameter', () => {
+			expect(() => customFieldsConfig.loadConfig(null)).toThrow(
+				'Project root must be a valid string path'
+			);
+			expect(() => customFieldsConfig.loadConfig(123)).toThrow(
+				'Project root must be a valid string path'
 			);
 		});
 
-		it('should throw error for invalid schema', () => {
-			const invalidConfig = {
-				allowList: 'not-an-array'
+		it('should cache configuration per project root', () => {
+			const mockConfig = {
+				allowList: ['epic']
 			};
 
-			fs.existsSync.mockReturnValue(true);
-			fs.readFileSync.mockReturnValue(JSON.stringify(invalidConfig));
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			
+			// Load config first time
+			const firstLoad = configWithPreload.loadConfig(mockProjectRoot);
+			expect(firstLoad.allowList).toEqual(['epic']);
 
-			expect(() => customFieldsConfig.loadConfig(mockProjectRoot)).toThrow(
-				'Failed to load custom fields configuration'
-			);
+			// Load again - should use cache
+			const secondLoad = configWithPreload.loadConfig(mockProjectRoot);
+			expect(secondLoad).toBe(firstLoad); // Same object reference
+
+			// Clear cache and verify it's cleared
+			configWithPreload.clearCache();
+			expect(configWithPreload.cache.size).toBe(0);
 		});
 	});
 
 	describe('validateAllowList', () => {
-		const coreParameters = new Set([
-			'file',
-			'prompt',
-			'id',
-			'research',
-			'projectRoot',
-			'title',
-			'description',
-			'details',
-			'dependencies'
-		]);
-
 		it('should return valid fields without conflicts', () => {
 			const allowList = ['epic', 'component', 'assignee'];
 
-			const validFields = customFieldsConfig.validateAllowList(
-				allowList,
-				coreParameters
-			);
+			const result = customFieldsConfig.validateAllowList(allowList);
 
-			expect(validFields).toEqual(allowList);
-			expect(console.warn).not.toHaveBeenCalled();
+			expect(result.validFields).toEqual(allowList);
+			expect(result.conflictingFields).toEqual([]);
+			expect(console.log).not.toHaveBeenCalledWith(
+				expect.stringContaining('conflict with core parameters')
+			);
 		});
 
-		it('should detect and filter conflicting fields', () => {
+		it('should detect and separate conflicting fields', () => {
 			const allowList = ['epic', 'prompt', 'file', 'assignee'];
 
-			const validFields = customFieldsConfig.validateAllowList(
-				allowList,
-				coreParameters
-			);
+			const result = customFieldsConfig.validateAllowList(allowList);
 
-			expect(validFields).toEqual(['epic', 'assignee']);
-			expect(console.warn).toHaveBeenCalledWith(
-				expect.stringContaining('prompt, file')
-			);
+			expect(result.validFields).toEqual(['epic', 'assignee']);
+			expect(result.conflictingFields).toEqual(['prompt', 'file']);
 		});
 
 		it('should handle kebab-case to camelCase conflicts', () => {
-			const allowList = ['epic', 'project-root', 'assignee'];
+			const allowList = ['epic', 'project-root', 'assignee', 'custom-fields'];
 
-			const validFields = customFieldsConfig.validateAllowList(
-				allowList,
-				coreParameters
-			);
+			const result = customFieldsConfig.validateAllowList(allowList);
 
-			expect(validFields).toEqual(['epic', 'assignee']);
-			expect(console.warn).toHaveBeenCalledWith(
-				expect.stringContaining('project-root')
-			);
+			expect(result.validFields).toEqual(['epic', 'assignee']);
+			expect(result.conflictingFields).toEqual(['project-root', 'custom-fields']);
 		});
 
 		it('should return empty array if all fields conflict', () => {
-			const allowList = ['prompt', 'file', 'id'];
+			const allowList = ['prompt', 'file', 'id', 'custom-fields'];
 
-			const validFields = customFieldsConfig.validateAllowList(
-				allowList,
-				coreParameters
+			const result = customFieldsConfig.validateAllowList(allowList);
+
+			expect(result.validFields).toEqual([]);
+			expect(result.conflictingFields).toEqual(['prompt', 'file', 'id', 'custom-fields']);
+		});
+
+		it('should use custom core parameters when provided', () => {
+			const allowList = ['epic', 'custom-param', 'assignee'];
+			const customCoreParams = ['custom-param', 'another-param'];
+
+			const result = customFieldsConfig.validateAllowList(allowList, customCoreParams);
+
+			expect(result.validFields).toEqual(['epic', 'assignee']);
+			expect(result.conflictingFields).toEqual(['custom-param']);
+		});
+
+		it('should handle empty or invalid input gracefully', () => {
+			expect(customFieldsConfig.validateAllowList(null)).toEqual(
+				{ validFields: [], conflictingFields: [] }
 			);
-
-			expect(validFields).toEqual([]);
+			expect(customFieldsConfig.validateAllowList(undefined)).toEqual(
+				{ validFields: [], conflictingFields: [] }
+			);
+			expect(customFieldsConfig.validateAllowList('not-an-array')).toEqual(
+				{ validFields: [], conflictingFields: [] }
+			);
 		});
 	});
 
-	describe('generateCliOptions', () => {
-		let mockCommand;
+	describe('validateBlockList', () => {
+		it('should separate valid and conflicting fields', () => {
+			const blockList = ['password', 'secret', 'prompt', 'file']; // prompt/file are core params
 
-		beforeEach(() => {
-			mockCommand = {
-				option: jest.fn()
-			};
+			const result = customFieldsConfig.validateBlockList(blockList);
+
+			expect(result.validFields).toEqual(['password', 'secret']);
+			expect(result.conflictingFields).toEqual(['prompt', 'file']);
 		});
 
-		it('should generate options for allow-listed fields', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic', 'component'],
-				allowAdhoc: false
-			};
-
-			customFieldsConfig.generateCliOptions(mockCommand, ['epic', 'component']);
-
-			expect(mockCommand.option).toHaveBeenCalledTimes(2);
-			expect(mockCommand.option).toHaveBeenCalledWith(
-				'--epic <value>',
-				'Set epic custom field'
+		it('should handle empty or invalid input gracefully', () => {
+			expect(customFieldsConfig.validateBlockList(null)).toEqual(
+				{ validFields: [], conflictingFields: [] }
 			);
-			expect(mockCommand.option).toHaveBeenCalledWith(
-				'--component <value>',
-				'Set component custom field'
+			expect(customFieldsConfig.validateBlockList(undefined)).toEqual(
+				{ validFields: [], conflictingFields: [] }
+			);
+			expect(customFieldsConfig.validateBlockList('not-an-array')).toEqual(
+				{ validFields: [], conflictingFields: [] }
 			);
 		});
 
-		it('should add custom option when allowAdhoc is true', () => {
-			customFieldsConfig.config = {
+		it('should use custom core parameters when provided', () => {
+			const blockList = ['password', 'custom-param'];
+			const customCoreParams = ['custom-param'];
+
+			const result = customFieldsConfig.validateBlockList(blockList, customCoreParams);
+
+			expect(result.validFields).toEqual(['password']);
+			expect(result.conflictingFields).toEqual(['custom-param']);
+		});
+	});
+
+	describe('Helper methods', () => {
+		it('should create a parser instance', () => {
+			const parser = customFieldsConfig.createParser();
+			expect(parser).toBeInstanceOf(CustomFieldsParser);
+		});
+
+		it('should get current config after loading', () => {
+			const mockConfig = { allowList: ['epic'] };
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			
+			// Should return null before loading
+			expect(configWithPreload.getCurrentConfig()).toBeNull();
+			
+			// Should return config after loading
+			configWithPreload.loadConfig(mockProjectRoot);
+			expect(configWithPreload.getCurrentConfig()).toEqual({
+				version: '1.0',
 				allowList: ['epic'],
-				allowAdhoc: true
-			};
-
-			customFieldsConfig.generateCliOptions(mockCommand, ['epic']);
-
-			expect(mockCommand.option).toHaveBeenCalledTimes(2);
-			expect(mockCommand.option).toHaveBeenCalledWith(
-				'--custom <field:value>',
-				'Set custom field using field:value syntax (repeatable)',
-				expect.any(Function),
-				[]
-			);
+				allowAdhoc: false,
+				blockList: [],
+				description: ''
+			});
 		});
 
-		it('should not add custom option when allowAdhoc is false', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic'],
-				allowAdhoc: false
+		it('should get valid custom fields excluding conflicts', () => {
+			const mockConfig = {
+				allowList: ['epic', 'prompt', 'component'] // 'prompt' conflicts with core
 			};
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			configWithPreload.loadConfig(mockProjectRoot);
+			
+			const validFields = configWithPreload.getValidCustomFields();
+			expect(validFields).toEqual(['epic', 'component']); // 'prompt' filtered out
+		});
 
-			customFieldsConfig.generateCliOptions(mockCommand, ['epic']);
+		it('should check if field is allowed', () => {
+			const mockConfig = {
+				allowList: ['epic'],
+				allowAdhoc: true,
+				blockList: ['password']
+			};
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			configWithPreload.loadConfig(mockProjectRoot);
+			
+			expect(configWithPreload.isFieldAllowed('epic')).toBe(true); // in allow list
+			expect(configWithPreload.isFieldAllowed('custom-field')).toBe(true); // ad-hoc enabled
+			expect(configWithPreload.isFieldAllowed('password')).toBe(false); // in block list
+			expect(configWithPreload.isAllowed('epic')).toBe(true); // alias method
+		});
 
-			expect(mockCommand.option).toHaveBeenCalledTimes(1);
-			expect(mockCommand.option).not.toHaveBeenCalledWith(
-				'--custom <field:value>',
-				expect.any(String),
-				expect.any(Function),
-				expect.any(Array)
-			);
+		it('should convert kebab-case to camelCase', () => {
+			expect(customFieldsConfig.kebabToCamel('project-root')).toBe('projectRoot');
+			expect(customFieldsConfig.kebabToCamel('status-notes')).toBe('statusNotes');
+			expect(customFieldsConfig.kebabToCamel('priority-level')).toBe('priorityLevel');
+			expect(customFieldsConfig.kebabToCamel('epic')).toBe('epic'); // no hyphens
 		});
 	});
 
 	describe('generateMcpSchema', () => {
+		beforeEach(() => {
+			// Load config for schema generation tests
+			const mockConfig = {
+				allowList: ['epic', 'component'],
+				allowAdhoc: true
+			};
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			configWithPreload.loadConfig(mockProjectRoot);
+			customFieldsConfig = configWithPreload;
+		});
+
 		it('should extend base schema with custom fields', () => {
 			const baseSchema = z.object({
 				id: z.string(),
@@ -418,7 +289,7 @@ describe('CustomFieldsConfig', () => {
 			expect(() => extendedSchema.parse(testData)).not.toThrow();
 		});
 
-		it('should allow passthrough for additional fields', () => {
+		it('should allow passthrough for additional fields when ad-hoc enabled', () => {
 			const baseSchema = z.object({
 				id: z.string()
 			});
@@ -437,214 +308,81 @@ describe('CustomFieldsConfig', () => {
 			const parsed = extendedSchema.parse(testData);
 			expect(parsed.unknownField).toBe('value');
 		});
+
+		it('should only allow passthrough when allowAdhoc is enabled', () => {
+			// Create config without ad-hoc
+			const configNoAdhoc = new CustomFieldsConfig({
+				allowList: ['epic'],
+				allowAdhoc: false
+			});
+			configNoAdhoc.loadConfig(mockProjectRoot);
+
+			const baseSchema = z.object({ id: z.string() });
+			const schemaWithAdhoc = customFieldsConfig.generateMcpSchema(baseSchema, ['epic']);
+			const schemaNoAdhoc = configNoAdhoc.generateMcpSchema(baseSchema, ['epic']);
+
+			// Both should accept known fields
+			const testData = { id: '123', epic: 'EPIC-123' };
+			expect(() => schemaWithAdhoc.parse(testData)).not.toThrow();
+			expect(() => schemaNoAdhoc.parse(testData)).not.toThrow();
+
+			// Only schema with adhoc should accept unknown fields
+			const testDataWithUnknown = { id: '123', epic: 'EPIC-123', unknown: 'value' };
+			expect(() => schemaWithAdhoc.parse(testDataWithUnknown)).not.toThrow();
+			// Note: Without adhoc, Zod extend + no passthrough would strip unknown fields rather than throw
+		});
+
+		it('should handle empty custom fields gracefully', () => {
+			const baseSchema = z.object({ id: z.string() });
+			const extendedSchema = customFieldsConfig.generateMcpSchema(baseSchema, []);
+
+			const testData = { id: '123' };
+			expect(() => extendedSchema.parse(testData)).not.toThrow();
+		});
 	});
 
-	describe('parseCustomFields', () => {
-		it('should extract allow-listed fields', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic', 'component', 'assignee'],
-				allowAdhoc: false,
-				blockList: []
+	describe('parseCustomFields (deprecated method)', () => {
+		it('should use parser for backward compatibility', () => {
+			const mockConfig = {
+				allowList: ['epic', 'component'],
+				allowAdhoc: false
 			};
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			configWithPreload.loadConfig(mockProjectRoot);
 
 			const args = {
 				id: '123',
 				prompt: 'test',
 				epic: 'EPIC-123',
-				component: 'auth',
-				assignee: 'john.doe',
-				unknownField: 'ignored'
+				component: 'auth'
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
+			// Use the deprecated method which should delegate to parser
+			const customFields = configWithPreload.parseCustomFields(args);
 
 			expect(customFields).toEqual({
 				epic: 'EPIC-123',
-				component: 'auth',
-				assignee: 'john.doe'
-			});
-		});
-
-		it('should handle ad-hoc fields when enabled', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic'],
-				allowAdhoc: true,
-				blockList: []
-			};
-
-			const args = {
-				epic: 'EPIC-123',
-				custom: ['priority-level:P1', 'review-board:architecture']
-			};
-
-			const customFields = customFieldsConfig.parseCustomFields(args);
-
-			expect(customFields).toEqual({
-				epic: 'EPIC-123',
-				'priority-level': 'P1',
-				'review-board': 'architecture'
-			});
-		});
-
-		it('should handle values with colons in ad-hoc fields', () => {
-			customFieldsConfig.config = {
-				allowList: [],
-				allowAdhoc: true,
-				blockList: []
-			};
-
-			const args = {
-				custom: ['url:https://example.com:8080']
-			};
-
-			const customFields = customFieldsConfig.parseCustomFields(args);
-
-			expect(customFields).toEqual({
-				url: 'https://example.com:8080'
-			});
-		});
-
-		it('should throw error for block-listed fields', () => {
-			customFieldsConfig.config = {
-				allowList: [],
-				allowAdhoc: true,
-				blockList: ['password', 'secret']
-			};
-
-			const args = {
-				custom: ['password:12345']
-			};
-
-			expect(() => customFieldsConfig.parseCustomFields(args)).toThrow(
-				"Field 'password' is not allowed"
-			);
-		});
-
-		it('should ignore ad-hoc fields when disabled', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic'],
-				allowAdhoc: false,
-				blockList: []
-			};
-
-			const args = {
-				epic: 'EPIC-123',
-				custom: ['priority-level:P1']
-			};
-
-			const customFields = customFieldsConfig.parseCustomFields(args);
-
-			expect(customFields).toEqual({
-				epic: 'EPIC-123'
-			});
-		});
-
-		it('should handle single custom value as string', () => {
-			customFieldsConfig.config = {
-				allowList: [],
-				allowAdhoc: true,
-				blockList: []
-			};
-
-			const args = {
-				custom: 'field:value'
-			};
-
-			const customFields = customFieldsConfig.parseCustomFields(args);
-
-			expect(customFields).toEqual({
-				field: 'value'
+				component: 'auth'
 			});
 		});
 
 		it('should return empty object when no config loaded', () => {
-			customFieldsConfig.config = null;
-
+			const freshConfig = new CustomFieldsConfig();
+			// Don't load any config
+			
 			const args = {
 				epic: 'EPIC-123',
 				custom: ['field:value']
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
-
+			const customFields = freshConfig.parseCustomFields(args);
 			expect(customFields).toEqual({});
 		});
 	});
 
-	describe('isAllowed', () => {
-		it('should allow fields in allowList', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic', 'component'],
-				allowAdhoc: false,
-				blockList: []
-			};
-
-			expect(customFieldsConfig.isAllowed('epic')).toBe(true);
-			expect(customFieldsConfig.isAllowed('component')).toBe(true);
-		});
-
-		it('should reject fields in blockList', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic'],
-				allowAdhoc: true,
-				blockList: ['password', 'secret']
-			};
-
-			expect(customFieldsConfig.isAllowed('password')).toBe(false);
-			expect(customFieldsConfig.isAllowed('secret')).toBe(false);
-		});
-
-		it('should allow ad-hoc fields when enabled', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic'],
-				allowAdhoc: true,
-				blockList: ['password']
-			};
-
-			expect(customFieldsConfig.isAllowed('custom-field')).toBe(true);
-			expect(customFieldsConfig.isAllowed('priority-level')).toBe(true);
-		});
-
-		it('should reject ad-hoc fields when disabled', () => {
-			customFieldsConfig.config = {
-				allowList: ['epic'],
-				allowAdhoc: false,
-				blockList: []
-			};
-
-			expect(customFieldsConfig.isAllowed('custom-field')).toBe(false);
-			expect(customFieldsConfig.isAllowed('priority-level')).toBe(false);
-		});
-
-		it('should return false when no config loaded', () => {
-			customFieldsConfig.config = null;
-
-			expect(customFieldsConfig.isAllowed('epic')).toBe(false);
-		});
-	});
-
-	describe('kebabToCamel', () => {
-		it('should convert kebab-case to camelCase', () => {
-			expect(customFieldsConfig.kebabToCamel('project-root')).toBe(
-				'projectRoot'
-			);
-			expect(customFieldsConfig.kebabToCamel('status-notes')).toBe(
-				'statusNotes'
-			);
-			expect(customFieldsConfig.kebabToCamel('priority-level')).toBe(
-				'priorityLevel'
-			);
-		});
-
-		it('should handle strings without hyphens', () => {
-			expect(customFieldsConfig.kebabToCamel('epic')).toBe('epic');
-			expect(customFieldsConfig.kebabToCamel('component')).toBe('component');
-		});
-	});
-
 	describe('Integration scenarios', () => {
-		it('should handle full configuration workflow', () => {
-			// Load config
+		it('should handle full configuration workflow with constructor injection', () => {
+			// Create config with preloaded data
 			const mockConfig = {
 				version: '1.0',
 				allowList: ['epic', 'component', 'assignee'],
@@ -652,58 +390,76 @@ describe('CustomFieldsConfig', () => {
 				blockList: ['password', 'token']
 			};
 
-			mockFs.existsSync.mockReturnValue(true);
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			configWithPreload.loadConfig(mockProjectRoot);
 
-			customFieldsConfig.loadConfig(mockProjectRoot, mockFs);
-
-			// Validate against core parameters
-			const coreParams = new Set(['file', 'prompt', 'id']);
-			const validFields = customFieldsConfig.validateAllowList(
-				mockConfig.allowList,
-				coreParams
-			);
-
+			// Get valid fields (should filter conflicts automatically)
+			const validFields = configWithPreload.getValidCustomFields();
 			expect(validFields).toEqual(['epic', 'component', 'assignee']);
 
-			// Parse fields from CLI args
+			// Parse fields using the parser
+			const parser = configWithPreload.createParser();
 			const args = {
 				epic: 'EPIC-123',
 				component: 'auth',
 				custom: ['priority-level:P1']
 			};
 
-			const customFields = customFieldsConfig.parseCustomFields(args);
+			const customFields = parser.parseCustomFields(args);
 
 			expect(customFields).toEqual({
 				epic: 'EPIC-123',
 				component: 'auth',
 				'priority-level': 'P1'
 			});
+
+			// Check field permissions
+			expect(configWithPreload.isAllowed('epic')).toBe(true);
+			expect(configWithPreload.isAllowed('custom-field')).toBe(true); // ad-hoc enabled
+			expect(configWithPreload.isAllowed('password')).toBe(false); // blocked
 		});
 
-		it('should handle conflict scenario correctly', () => {
+		it('should handle conflict scenario with core parameters', () => {
 			const mockConfig = {
-				allowList: ['epic', 'prompt', 'file'],
+				allowList: ['epic', 'prompt', 'file'], // prompt and file conflict with core
 				allowAdhoc: false,
 				blockList: []
 			};
 
-			mockFs.existsSync.mockReturnValue(true);
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
+			const configWithPreload = new CustomFieldsConfig(mockConfig);
+			configWithPreload.loadConfig(mockProjectRoot);
 
-			customFieldsConfig.loadConfig(mockProjectRoot, mockFs);
+			// Validation should separate valid from conflicting
+			const result = configWithPreload.validateAllowList(mockConfig.allowList);
+			expect(result.validFields).toEqual(['epic']);
+			expect(result.conflictingFields).toEqual(['prompt', 'file']);
 
-			const coreParams = new Set(['file', 'prompt']);
-			const validFields = customFieldsConfig.validateAllowList(
-				mockConfig.allowList,
-				coreParams
-			);
-
+			// getValidCustomFields should return only valid fields
+			const validFields = configWithPreload.getValidCustomFields();
 			expect(validFields).toEqual(['epic']);
-			expect(console.warn).toHaveBeenCalledWith(
-				expect.stringContaining('prompt, file')
-			);
+		});
+
+		it('should work with custom core parameters injection', () => {
+			const customCoreParams = ['custom-param', 'another-param'];
+			const configWithCustomCore = new CustomFieldsConfig();
+			// Inject custom core parameters for testing
+			configWithCustomCore.coreParameters = customCoreParams;
+
+			const allowList = ['epic', 'custom-param', 'component'];
+			const result = configWithCustomCore.validateAllowList(allowList);
+
+			expect(result.validFields).toEqual(['epic', 'component']);
+			expect(result.conflictingFields).toEqual(['custom-param']);
+		});
+	});
+
+	describe('Core parameters constants', () => {
+		it('should export core parameters', () => {
+			expect(CORE_PARAMETERS).toBeDefined();
+			expect(Array.isArray(CORE_PARAMETERS)).toBe(true);
+			expect(CORE_PARAMETERS).toContain('prompt');
+			expect(CORE_PARAMETERS).toContain('file');
+			expect(CORE_PARAMETERS).toContain('id');
 		});
 	});
 });

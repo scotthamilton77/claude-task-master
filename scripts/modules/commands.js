@@ -23,7 +23,7 @@ import {
 	detectCamelCaseFlags,
 	toKebabCase
 } from './utils.js';
-import { customFieldsConfig } from './utils/customFieldsConfig.js';
+import { CustomFieldsConfig } from './utils/customFieldsConfig.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -1215,6 +1215,7 @@ function registerCommands(programInstance) {
 				}
 
 				// Load custom fields configuration and parse custom fields
+				const customFieldsConfig = new CustomFieldsConfig();
 				customFieldsConfig.loadConfig(projectRoot);
 				const customFields = customFieldsConfig.parseCustomFields(options);
 
@@ -1351,6 +1352,7 @@ function registerCommands(programInstance) {
 				}
 
 				// Load custom fields configuration and parse custom fields
+				const customFieldsConfig = new CustomFieldsConfig();
 				customFieldsConfig.loadConfig(projectRoot);
 				const customFields = customFieldsConfig.parseCustomFields(options);
 
@@ -2303,6 +2305,7 @@ ${result.result}
 			}
 
 			// Load custom fields configuration and parse custom fields
+			const customFieldsConfig = new CustomFieldsConfig();
 			customFieldsConfig.loadConfig(projectRoot);
 			const customFields = customFieldsConfig.parseCustomFields(options);
 
@@ -2703,6 +2706,7 @@ ${result.result}
 			}
 
 			// Load custom fields configuration and parse custom fields
+			const customFieldsConfig = new CustomFieldsConfig();
 			customFieldsConfig.loadConfig(projectRoot);
 			const customFields = customFieldsConfig.parseCustomFields(options);
 

@@ -16,6 +16,10 @@ import {
 	PROJECT_MARKERS
 } from '../core/utils/path-utils.js';
 
+// Import custom fields classes for instance-based usage
+import { CustomFieldsConfig } from '../../../scripts/modules/utils/customFieldsConfig.js';
+import { CustomFieldsParser } from '../../../scripts/modules/utils/customFieldsParser.js';
+
 const __filename = fileURLToPath(import.meta.url);
 
 // Cache for version info to avoid repeated file reads
@@ -789,14 +793,13 @@ function withCustomFields(executeFn) {
 		let customFields = {};
 
 		try {
-			// Dynamically import to avoid circular dependencies
-			const { customFieldsConfig } = await import(
-				'../../../scripts/modules/utils/customFieldsConfig.js'
-			);
+			// Create new instances instead of using singleton
+			const config = new CustomFieldsConfig();
+			const parser = new CustomFieldsParser(config);
 
 			// Load configuration and parse custom fields
-			customFieldsConfig.loadConfig(args.projectRoot);
-			customFields = customFieldsConfig.parseCustomFields(args);
+			config.loadConfig(args.projectRoot);
+			customFields = parser.parseCustomFields(args);
 
 			if (Object.keys(customFields).length > 0) {
 				log.info(

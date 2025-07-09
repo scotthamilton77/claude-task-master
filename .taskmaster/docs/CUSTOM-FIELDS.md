@@ -92,7 +92,7 @@ function validateCustomFieldConfig(allowList, coreParameters) {
   if (conflicts.length > 0) {
     console.warn(`⚠️  Custom fields conflict with core parameters: ${conflicts.join(', ')}`);
     console.warn(`   These fields will only be accessible via --custom:* syntax`);
-    // TODO: Make this validation dynamic and future-proof
+    // Validation is now dynamic and configurable via constructor parameters
     return allowList.filter(field => !conflicts.includes(field));
   }
   return allowList;
@@ -164,20 +164,24 @@ function parseCustomFields(args, config) {
 
 ### 5. Help Text Generation
 
-NOTE: this section is out of date and needs to be updated to be run specifically in the context of a project where the project-level configuration can be loaded.
+With the instance-based approach, help text generation requires loading the project-specific configuration:
 
 ```javascript
-function generateCustomFieldHelp(config) {
+function generateCustomFieldHelp(projectRoot) {
+  // Create configuration instance and load project-specific config
+  const config = new CustomFieldsConfig();
+  const loadedConfig = config.loadConfig(projectRoot);
+  
   let help = '';
   
-  if (config.allowList.length > 0) {
+  if (loadedConfig.allowList.length > 0) {
     help += '\nCustom Fields (allow-listed):\n';
-    config.allowList.forEach(field => {
+    loadedConfig.allowList.forEach(field => {
       help += `  --${field} <value>    Set ${field} field\n`;
     });
   }
   
-  if (config.allowAdhoc) {
+  if (loadedConfig.allowAdhoc) {
     help += '\nAd-hoc Custom Fields:\n';
     help += '  --custom:fieldname <value>    Set arbitrary custom field\n';
     help += '                                Example: --custom:priority-level P1\n';
@@ -196,9 +200,13 @@ The system uses a `withCustomFields` HOF that wraps MCP tool functions:
 // In mcp-server/src/tools/utils.js
 function withCustomFields(executeFn) {
   return async (args, context) => {
+    // Create new instances instead of using singleton
+    const config = new CustomFieldsConfig();
+    const parser = new CustomFieldsParser(config);
+    
     // Load configuration and parse custom fields
-    customFieldsConfig.loadConfig(args.projectRoot);
-    const customFields = customFieldsConfig.parseCustomFields(args);
+    config.loadConfig(args.projectRoot);
+    const customFields = parser.parseCustomFields(args);
     
     // Call wrapped function with custom fields added to args
     return executeFn({ ...args, customFields }, context);
@@ -207,13 +215,13 @@ function withCustomFields(executeFn) {
 ```
 
 ### Configuration Service
-- **Singleton Pattern**: Single configuration instance per project
-- **Caching**: Configurations cached per project root for performance  
+- **Instance-Based Pattern**: Each operation creates its own configuration instance
+- **Caching**: Per-instance configuration caching for performance  
 - **Conflict Detection**: Automatic filtering of conflicting field names
 - **Dynamic Schema Generation**: Creates Zod schemas for MCP validation
 
 ### Data Flow
-1. **Configuration Loading**: Configuration loaded per project root and cached
+1. **Configuration Loading**: Configuration loaded per project root and cached per instance
 2. **Conflict Resolution**: Field names validated against core parameters
 3. **Argument Parsing**: Custom fields extracted from CLI arguments or MCP parameters
 4. **Validation**: Fields validated against allow/block lists
